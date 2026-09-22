@@ -31,35 +31,31 @@ from .budget import calculate_budget
 logger = logging.getLogger(__name__)
 
 
-EXTRACTION_SYSTEM_PROMPT = """You are a travel request parser for TripMate.
-Extract structured travel parameters from the user's input into strict JSON.
-DO NOT invent places or output conversational text. Output ONLY valid JSON matching this schema:
+EXTRACTION_SYSTEM_PROMPT = """Bạn là travel request parser của TripMate.
+Trích xuất thông tin du lịch từ yêu cầu người dùng thành JSON hợp lệ. KHÔNG bịa tên địa điểm.
+Chỉ xuất JSON theo schema dưới đây:
 {
-  "destination": "string",
+  "destination": "string (tên tỉnh/thành phố Việt Nam)",
   "days": 3,
   "travelers": 4,
   "transportation": "car" | "motorcycle" | "public" | "flight",
   "tier": "budget" | "moderate" | "luxury",
-  "places_queries": [
-    {
-      "category": "restaurant" | "attraction" | "hotel" | "cafe",
-      "query": "search query phrase including location e.g. restaurants near Dragon Bridge Da Nang"
-    }
-  ],
+  "categories": ["restaurant", "attraction", "hotel", "cafe"],
   "budget_vnd": null or number
 }
 """
 
-ITINERARY_SYSTEM_PROMPT = """You are TripMate's itinerary synthesizer.
-You will be provided with:
-1. Trip parameters (destination, days, travelers)
-2. A list of VERIFIED REAL PLACES returned from Google Places API.
+ITINERARY_SYSTEM_PROMPT = """Bạn là trình tổng hợp lịch trình của TripMate.
+Bạn nhận được:
+1. Thông tin chuyến đi (điểm đến, số ngày, số người)
+2. Danh sách ĐỊA ĐIỂM THỰC TẾ ĐÃ XÁC THỰC từ Google Places API / Geoapify.
 
-STRICT RULES:
-- You must ONLY use or recommend attractions, restaurants, cafes, and spots that appear in the PROVIDED VERIFIED PLACES list.
-- Do NOT fabricate or invent any venue that is not in the verified list.
-- If no places are found for a slot, mention a general activity (e.g. 'Stroll along the riverbank') without inventing fake shop names.
-- Organize the itinerary day-by-day (Morning, Afternoon, Evening) with meal recommendations and logistics.
+QUY TẮC NGHIÊM NGẶT:
+- Chỉ được sử dụng các nhà hàng, địa điểm tham quan, quán cafe trong DANH SÁCH ĐÃ CẤP.
+- TUYỆT ĐỐI KHÔNG bịa tên địa điểm nào không có trong danh sách xác thực.
+- Nếu không tìm được địa điểm phù hợp, đề xuất hoạt động chung (ví dụ: 'Dạo bộ dọc bờ sông') mà KHÔNG đặt tên giả cho cửa hàng/nhà hàng.
+- Viết lịch trình theo từng ngày (Buổi sáng, Buổi chiều, Buổi tối) bằng TIẾNG VIỆT.
+- Giữ nguyên tên thương hiệu/địa điểm chính thức (ví dụ: Madame Lan Restaurant, VinWonders Phú Quốc, Bún Chả Hương Liên).
 """
 
 
@@ -95,46 +91,59 @@ def _heuristic_extract(text: str) -> Dict[str, Any]:
     """Deterministic fallback parser for common travel phrases."""
     text_lower = text.lower()
 
-    # Destination detection from catalog or common names
+    # Destination detection from catalog
     from .destinations import DESTINATIONS_CATALOG, get_destination_info
 
-    destination = "Da Nang"
+    destination = None
     dest_candidates = [
-        "đà nẵng", "da nang", "hà nội", "ha noi", "hanoi", "tp. hồ chí minh", "hồ chí minh", "ho chi minh", "sài gòn", "saigon",
-        "phú quốc", "phu quoc", "hội an", "hoi an", "nha trang", "đà lạt", "da lat", "dalat", "huế", "hue",
-        "sa pa", "sapa", "quy nhơn", "quy nhon", "tokyo", "kyoto", "bangkok", "paris", "rome", "london", "singapore", "bali"
+        "đà nẵng", "da nang", "hà nội", "ha noi", "hanoi",
+        "tp. hồ chí minh", "hồ chí minh", "ho chi minh", "sài gòn", "saigon",
+        "phú quốc", "phu quoc", "hội an", "hoi an", "nha trang",
+        "đà lạt", "da lat", "dalat", "huế", "hue",
+        "hạ long", "ha long", "halong", "sa pa", "sapa",
+        "quy nhơn", "quy nhon", "vũng tàu", "vung tau",
+        "cần thơ", "can tho", "ninh bình", "ninh binh",
+        "mũi né", "mui ne", "hải phòng", "hai phong",
+        "hà giang", "ha giang", "cao bằng", "cao bang",
+        "quảng bình", "quang binh", "điện biên", "dien bien",
     ]
     for candidate in dest_candidates:
         if candidate in text_lower:
-            # If prompt has the exact accented letters, use catalog; if user typed plain ASCII, preserve plain or catalog
             info = get_destination_info(candidate)
-            if any(accent_char in candidate for accent_char in "àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ"):
+            if any(c in candidate for c in "àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ"):
                 destination = info["name"] if info else candidate.title()
             else:
-                # User typed unaccented (e.g. 'Da Nang', 'Phu Quoc', 'Tokyo')
                 destination = candidate.title()
             break
 
-    # Days detection (e.g. '3-day', '3 days', '5 days', '4 ngày', '3 ngày 2 đêm')
+    # Fallback to first catalog destination if none detected
+    if not destination:
+        destination = next(iter(DESTINATIONS_CATALOG.values()))["name"]
+
+    # Days detection (e.g. '3-day', '3 days', '4 ngày', '3 ngày 2 đêm')
     days = 3
     days_match = re.search(r"(\d+)\s*(?:-| )*(?:day|days|d\b|ngày|ngay)", text_lower)
     if days_match:
         days = int(days_match.group(1))
 
-    # Travelers / people detection (e.g. 'for 4 people', '4 travelers', '4 pax', '2 người', 'đoàn 6 người')
+    # Travelers detection
     travelers = 1
-    pax_match = re.search(r"(?:for\s+|cho\s+|đoàn\s+)?(\d+)\s*(?:people|travelers|members|pax|persons|guests|người|nguoi|thành viên|thanh vien|khách|khach)", text_lower)
+    pax_match = re.search(
+        r"(?:for\s+|cho\s+|đoàn\s+)?(\d+)\s*"
+        r"(?:people|travelers|members|pax|persons|guests|người|nguoi|thành viên|thanh vien|khách|khach)",
+        text_lower,
+    )
     if pax_match:
         travelers = int(pax_match.group(1))
 
-    # Budget VND extraction (e.g. '1,000,000 VND', '6600000 vnd', '1m vnd')
+    # Budget VND extraction
     budget_vnd = None
     vnd_match = re.search(r"([\d,\.]+)\s*(?:k|m|million|triệu)?\s*(?:vnd|đồng|dong)", text_lower)
     if vnd_match:
         val_str = vnd_match.group(1).replace(",", "").replace(".", "")
         try:
             budget_vnd = float(val_str)
-            if "triệu" in text_lower or "million" in text_lower or "m" in text_lower:
+            if "triệu" in text_lower or "million" in text_lower:
                 if budget_vnd < 1000:
                     budget_vnd *= 1_000_000
         except ValueError:
@@ -142,7 +151,7 @@ def _heuristic_extract(text: str) -> Dict[str, Any]:
 
     # Budget tier
     tier = "moderate"
-    if "luxury" in text_lower or "high-end" in text_lower:
+    if "luxury" in text_lower or "high-end" in text_lower or "cao cấp" in text_lower:
         tier = "luxury"
     elif "budget" in text_lower or "cheap" in text_lower or "tiết kiệm" in text_lower:
         tier = "budget"
@@ -156,29 +165,23 @@ def _heuristic_extract(text: str) -> Dict[str, Any]:
     elif "public" in text_lower or "bus" in text_lower or "xe buýt" in text_lower:
         transportation = "public"
 
-    # Search queries for real places (dynamically customized for destination)
-    places_queries = []
-    
-    # Specific location landmark check in query
-    landmark_query = None
-    if "dragon bridge" in text_lower or "cầu rồng" in text_lower:
-        landmark_query = "near Dragon Bridge"
-    elif "hoan kiem" in text_lower or "hồ gươm" in text_lower:
-        landmark_query = "near Hoan Kiem Lake"
-    elif "ben thanh" in text_lower or "bến thành" in text_lower:
-        landmark_query = "near Ben Thanh Market"
+    # Determine relevant POI categories from text
+    categories = []
+    if any(kw in text_lower for kw in ["restaurant", "food", "ăn", "dinner", "lunch", "hải sản", "quán"]):
+        categories.append("restaurant")
+    if any(kw in text_lower for kw in ["cafe", "coffee", "cà phê"]):
+        categories.append("cafe")
+    if any(kw in text_lower for kw in ["hotel", "stay", "accommodation", "khách sạn", "lưu trú"]):
+        categories.append("hotel")
+    # Always include attraction if no categories, or explicitly requested
+    if any(kw in text_lower for kw in ["attraction", "sightseeing", "tourist", "tham quan", "địa điểm"]) or not categories:
+        categories.append("attraction")
 
-    if "dinner" in text_lower or "restaurant" in text_lower or "food" in text_lower or "ăn" in text_lower:
-        if landmark_query:
-            places_queries.append({"category": "restaurant", "query": f"restaurants {landmark_query} {destination}"})
-        else:
-            places_queries.append({"category": "restaurant", "query": f"best local restaurants in {destination}"})
-
-    if "attraction" in text_lower or "sightseeing" in text_lower or "tourist" in text_lower or "tham quan" in text_lower or not places_queries:
-        places_queries.append({"category": "attraction", "query": f"top attractions and landmarks in {destination}"})
-
-    if "hotel" in text_lower or "stay" in text_lower or "accommodation" in text_lower:
-        places_queries.append({"category": "hotel", "query": f"hotels in {destination}"})
+    # Build backward-compat places_queries for legacy consumers
+    places_queries = [
+        {"category": cat, "query": f"{cat} in {destination}"}
+        for cat in categories
+    ]
 
     return {
         "destination": destination,
@@ -186,6 +189,7 @@ def _heuristic_extract(text: str) -> Dict[str, Any]:
         "travelers": travelers,
         "transportation": transportation,
         "tier": tier,
+        "categories": categories,
         "places_queries": places_queries,
         "budget_vnd": budget_vnd,
     }
@@ -193,15 +197,19 @@ def _heuristic_extract(text: str) -> Dict[str, Any]:
 
 def _normalize_intent(data: Dict[str, Any], raw_text: str) -> Dict[str, Any]:
     """Ensure all required schema keys exist with valid types."""
+    from .destinations import DESTINATIONS_CATALOG
+    first_dest = next(iter(DESTINATIONS_CATALOG.values()))["name"]
+    dest = str(data.get("destination") or first_dest)
+    categories = data.get("categories") or ["attraction", "restaurant"]
     return {
-        "destination": str(data.get("destination") or "Da Nang").title(),
+        "destination": dest,
         "days": max(1, int(data.get("days", 3))),
         "travelers": max(1, int(data.get("travelers", 4))),
         "transportation": str(data.get("transportation") or "car"),
         "tier": str(data.get("tier") or "moderate"),
+        "categories": categories,
         "places_queries": data.get("places_queries") or [
-            {"category": "attraction", "query": f"top sights in {data.get('destination', 'Da Nang')}"},
-            {"category": "restaurant", "query": f"restaurants in {data.get('destination', 'Da Nang')}"},
+            {"category": cat, "query": f"{cat} in {dest}"} for cat in categories
         ],
         "budget_vnd": data.get("budget_vnd"),
     }
@@ -219,11 +227,12 @@ class AITravelPlanner:
         mock_places_fallback: bool = True,
     ) -> Dict[str, Any]:
         """
-        Execute full Phase 4 & Phase 5 workflow:
-        1. Extract structured search parameters from user input.
-        2. Query Google Places API for real places.
-        3. Assemble itinerary referencing only verified places.
-        4. Calculate deterministic budget using the Budget Engine.
+        Strict POI RAG Pipeline:
+        USER INPUT → STRUCTURED INTENT → POI SERVICE (Lat/Lng + Categories)
+        → VERIFIED REAL POIs → AI SYNTHESIZER → ITINERARY + BUDGET
+
+        AI is strictly forbidden from inventing venue names;
+        it selects ONLY from the verified POI list.
         """
         # Step 1: Extract intent
         intent = extract_travel_intent(user_prompt)
@@ -233,40 +242,82 @@ class AITravelPlanner:
         tier = intent["tier"]
         transportation = intent["transportation"]
 
-        # Step 2: Query Google Places API
-        verified_places = []
-        places_by_category: Dict[str, List[Dict[str, Any]]] = {}
+        # Step 2: Resolve destination Lat/Lng from catalog
+        from .destinations import get_destination_info
+        dest_info = get_destination_info(destination)
+        dest_lat = dest_info["latitude"] if dest_info else None
+        dest_lng = dest_info["longitude"] if dest_info else None
 
-        for item in intent.get("places_queries", []):
-            q = item.get("query", f"{item.get('category', 'attraction')} in {destination}")
-            cat = item.get("category", "attraction")
+        # Category → Google Places types + Geoapify categories mapping
+        CATEGORY_MAP: Dict[str, Dict[str, Any]] = {
+            "restaurant": {
+                "google_types": ["restaurant"],
+                "geoapify_cat": "catering.restaurant",
+            },
+            "cafe": {
+                "google_types": ["cafe"],
+                "geoapify_cat": "catering.cafe",
+            },
+            "attraction": {
+                "google_types": ["tourist_attraction", "museum", "park"],
+                "geoapify_cat": "tourism.sights",
+            },
+            "hotel": {
+                "google_types": ["lodging"],
+                "geoapify_cat": "accommodation.hotel",
+            },
+        }
+
+        # Step 3: Query verified POIs using Lat/Lng + categories (NOT text geocoding)
+        verified_places: List[Dict[str, Any]] = []
+        places_by_category: Dict[str, List[Dict[str, Any]]] = {}
+        categories = intent.get("categories") or [
+            q["category"] for q in intent.get("places_queries", [])
+        ] or ["attraction", "restaurant"]
+
+        for cat in categories:
+            cat_config = CATEGORY_MAP.get(cat, CATEGORY_MAP["attraction"])
             try:
-                found = self.places.search_text(q, max_results=5)
+                if dest_lat is not None and dest_lng is not None:
+                    # Preferred: coordinate + category search (zero geocoding flaw)
+                    found = self.places.search_nearby(
+                        dest_lat,
+                        dest_lng,
+                        radius_meters=5000,
+                        included_types=cat_config["google_types"],
+                        max_results=6,
+                    )
+                else:
+                    # Fallback: text search when no coordinates available
+                    q = f"{cat} in {destination}"
+                    found = self.places.search_text(q, max_results=6)
+
                 for p in found:
                     p["category"] = cat
                 verified_places.extend(found)
                 places_by_category.setdefault(cat, []).extend(found)
+
             except PlacesAPIError as e:
-                logger.warning("Places API error during query '%s': %s", q, e)
-                # If no key or quota exceeded and fallback enabled for development:
-                if mock_places_fallback and (e.error_type in ("missing_api_key", "auth_error", "quota_exceeded", "network_error")):
-                    fallback_places = self._get_dev_sample_places(destination, cat)
-                    verified_places.extend(fallback_places)
-                    places_by_category.setdefault(cat, []).extend(fallback_places)
+                logger.warning("Places API error for category '%s' in %s: %s", cat, destination, e)
+                if mock_places_fallback and e.error_type in (
+                    "missing_api_key", "auth_error", "quota_exceeded", "network_error"
+                ):
+                    fallback = self._get_dev_sample_places(destination, cat)
+                    verified_places.extend(fallback)
+                    places_by_category.setdefault(cat, []).extend(fallback)
                 elif e.error_type in ("auth_error", "quota_exceeded"):
-                    # Surface clean user-friendly message
                     raise
 
         # Deduplicate places by ID or name
-        unique_places = []
-        seen = set()
+        unique_places: List[Dict[str, Any]] = []
+        seen: set = set()
         for p in verified_places:
             key = p.get("id") or p.get("name")
             if key and key not in seen:
                 seen.add(key)
                 unique_places.append(p)
 
-        # Step 3: AI creates itinerary (only using real verified places)
+        # Step 4: AI synthesizes itinerary from ONLY verified places
         itinerary_text = self._build_itinerary(
             destination=destination,
             days=days,
@@ -275,14 +326,16 @@ class AITravelPlanner:
             tier=tier,
         )
 
-        # Step 4: Deterministic budget calculation (authoritative backend arithmetic)
+        # Step 5: Deterministic budget calculation (no LLM involvement)
         budget = calculate_budget(
             travelers=travelers,
             days=days,
             transportation=transportation,
             tier=tier,
             selected_places=unique_places,
-            custom_accommodation=(intent["budget_vnd"] * 0.35 if intent.get("budget_vnd") else None)
+            custom_accommodation=(
+                intent["budget_vnd"] * 0.35 if intent.get("budget_vnd") else None
+            ),
         )
 
         return {
@@ -300,9 +353,9 @@ class AITravelPlanner:
         places: List[Dict[str, Any]],
         tier: str,
     ) -> str:
-        """Synthesize itinerary using LLM if available, or structured template referencing real places."""
+        """Tổng hợp lịch trình bằng LLM (nếu có) hoặc template chuẩn, chỉ dùng địa điểm đã xác thực."""
         places_summary = "\n".join([
-            f"- {p['name']} ({p.get('category', 'attraction')}, Rating: {p.get('rating', 'N/A')}⭐, Address: {p.get('address', 'N/A')})"
+            f"- {p['name']} (Loại: {p.get('category', 'attraction')}, Đánh giá: {p.get('rating', 'N/A')}⭐, Địa chỉ: {p.get('address', 'N/A')})"
             for p in places
         ])
 
@@ -310,9 +363,11 @@ class AITravelPlanner:
             from common.llm_client import chat, check_ollama_running
             if check_ollama_running():
                 prompt = (
-                    f"Create a {days}-day travel itinerary for {destination} ({travelers} travelers, {tier} budget).\n"
-                    f"YOU MUST ONLY USE PLACES FROM THIS LIST OF VERIFIED REAL PLACES:\n{places_summary}\n\n"
-                    "Format each day with Morning, Afternoon, Evening, and include estimated timing and travel tips."
+                    f"Lập kế hoạch du lịch {days} ngày tại {destination} "
+                    f"(đoàn {travelers} người, phong cách {tier}).\n"
+                    f"CHỈ ĐƯỢC DÙNG CÁC ĐỊA ĐIỂM ĐÃ XÁC THỰC SAU:\n{places_summary}\n\n"
+                    "Viết lịch trình theo từng ngày (Buổi sáng, Buổi chiều, Buổi tối) bằng tiếng Việt, "
+                    "kèm thời gian tham quan và mẹo di chuyển."
                 )
                 messages = [{"role": "user", "content": prompt}]
                 return chat(
@@ -322,67 +377,69 @@ class AITravelPlanner:
                     max_tokens=2048,
                 )
         except Exception as e:
-            logger.debug("LLM itinerary synthesis unavailable: %s. Using structured template.", e)
+            logger.debug("LLM không khả dụng: %s. Dùng template chuẩn.", e)
 
-        # High quality structured template synthesizing only verified places
-        lines = [f"# 🗺️ {destination} — {days}-Day Trip Plan for {travelers} Travelers", ""]
+        # Structured template — only references verified places, labels in Vietnamese
+        lines = [
+            f"# 🗺️ {destination} — Lịch trình {days} ngày cho {travelers} người",
+            "",
+        ]
         restaurants = [p for p in places if p.get("category") == "restaurant"]
-        attractions = [p for p in places if p.get("category") != "restaurant"]
+        attractions = [p for p in places if p.get("category") not in ("restaurant", "hotel")]
 
-        # Cycle through verified places across days
         att_idx = 0
         rest_idx = 0
 
         for day in range(1, days + 1):
-            lines.append(f"### 📍 Day {day}: Exploring {destination}")
-            
-            # Morning
+            lines.append(f"### 📍 Ngày {day}: Khám phá {destination}")
+
+            # Buổi sáng
             if attractions and att_idx < len(attractions):
                 att1 = attractions[att_idx % len(attractions)]
-                lines.append(f"- **Morning (09:00 - 12:00)**: Visit **{att1['name']}**")
-                lines.append(f"  - *Address*: {att1.get('address', 'Central area')}")
-                lines.append(f"  - *Rating*: {att1.get('rating', '4.5')} ⭐ ({att1.get('user_rating_count', 100)} reviews)")
+                lines.append(f"- **Buổi sáng (09:00 - 12:00)**: Tham quan **{att1['name']}**")
+                lines.append(f"  - *Địa chỉ*: {att1.get('address', 'Khu vực trung tâm')}")
+                lines.append(f"  - *Đánh giá*: {att1.get('rating', '4.5')} ⭐ ({att1.get('user_rating_count', 100)} đánh giá)")
                 att_idx += 1
             else:
-                lines.append(f"- **Morning (09:00 - 12:00)**: Morning neighborhood walking tour and coffee")
+                lines.append("- **Buổi sáng (09:00 - 12:00)**: Dạo bộ khám phá khu vực xung quanh và uống cà phê sáng")
 
-            # Lunch
+            # Buổi trưa
             if restaurants:
                 r1 = restaurants[rest_idx % len(restaurants)]
-                lines.append(f"- **Lunch (12:30 - 14:00)**: Dine at **{r1['name']}**")
-                lines.append(f"  - *Address*: {r1.get('address', 'Nearby')}")
-                lines.append(f"  - *Rating*: {r1.get('rating', '4.6')} ⭐")
+                lines.append(f"- **Buổi trưa (12:30 - 14:00)**: Ăn trưa tại **{r1['name']}**")
+                lines.append(f"  - *Địa chỉ*: {r1.get('address', 'Khu vực lân cận')}")
+                lines.append(f"  - *Đánh giá*: {r1.get('rating', '4.5')} ⭐")
                 rest_idx += 1
             else:
-                lines.append(f"- **Lunch (12:30 - 14:00)**: Local specialty lunch")
+                lines.append("- **Buổi trưa (12:30 - 14:00)**: Thưởng thức đặc sản địa phương")
 
-            # Afternoon
+            # Buổi chiều
             if attractions and att_idx < len(attractions):
                 att2 = attractions[att_idx % len(attractions)]
-                lines.append(f"- **Afternoon (14:30 - 17:30)**: Sightseeing at **{att2['name']}**")
-                lines.append(f"  - *Address*: {att2.get('address', 'Downtown')}")
+                lines.append(f"- **Buổi chiều (14:30 - 17:30)**: Tham quan **{att2['name']}**")
+                lines.append(f"  - *Địa chỉ*: {att2.get('address', 'Khu trung tâm')}")
                 att_idx += 1
             else:
-                lines.append(f"- **Afternoon (14:30 - 17:30)**: Scenic waterfront or cultural promenade")
+                lines.append("- **Buổi chiều (14:30 - 17:30)**: Tự do khám phá, chụp ảnh lưu niệm")
 
-            # Dinner / Evening
+            # Buổi tối
             if restaurants and rest_idx < len(restaurants):
                 r2 = restaurants[rest_idx % len(restaurants)]
-                lines.append(f"- **Evening (18:30 - 21:00)**: Dinner at **{r2['name']}** and evening stroll")
-                lines.append(f"  - *Address*: {r2.get('address', 'City center')}")
+                lines.append(f"- **Buổi tối (18:30 - 21:00)**: Ăn tối tại **{r2['name']}** và dạo phố đêm")
+                lines.append(f"  - *Địa chỉ*: {r2.get('address', 'Khu trung tâm')}")
                 rest_idx += 1
             else:
-                lines.append(f"- **Evening (18:30 - 21:00)**: Dinner and evening riverside lights")
+                lines.append("- **Buổi tối (18:30 - 21:00)**: Ăn tối và ngắm cảnh đêm của thành phố")
 
             lines.append("")
 
         lines.append("> [!TIP]")
-        lines.append(f"> All {len(places)} places in this itinerary are verified via Google Places API.")
+        lines.append(f"> Tất cả {len(places)} địa điểm trong lịch trình đã được xác thực qua Google Places API / Geoapify.")
         return "\n".join(lines)
 
     def _get_dev_sample_places(self, destination: str, category: str) -> List[Dict[str, Any]]:
-        """Return curated sample places from catalog or general city fallback for offline/development."""
-        from .destinations import get_destination_info
+        """Trả về địa điểm mẫu từ catalog hoặc fallback tổng quát khi không có API key (dev/offline)."""
+        from .destinations import get_destination_info, DESTINATIONS_CATALOG
         info = get_destination_info(destination)
         if info and "sample_places" in info:
             matched = [p for p in info["sample_places"] if p.get("category") == category]
@@ -390,18 +447,18 @@ class AITravelPlanner:
                 return matched
             return info["sample_places"][:2]
 
-        # Generic city fallback
+        # Lấy lat/lng fallback từ catalog gần nhất
+        first = next(iter(DESTINATIONS_CATALOG.values()))
         return [
             {
-                "id": f"places/{destination.lower()[:8]}_central_spot",
-                "name": f"{destination} Central Cultural Square",
-                "address": f"Center, {destination}",
-                "latitude": 21.0285,
-                "longitude": 105.8542,
-                "rating": 4.6,
-                "user_rating_count": 500,
-                "price_level": "FREE",
+                "id": f"places/{destination.lower()[:8]}_central",
+                "name": f"{destination} — Khu vực trung tâm",
+                "address": f"Trung tâm, {destination}",
+                "latitude": first["latitude"],
+                "longitude": first["longitude"],
+                "rating": 4.5,
+                "user_rating_count": 100,
+                "category": category,
                 "google_maps_uri": "https://maps.google.com",
-                "category": category
             }
         ]

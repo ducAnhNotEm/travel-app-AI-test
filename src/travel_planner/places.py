@@ -92,8 +92,12 @@ class PlacesService:
         self.geoapify_key = geoapify_key if geoapify_key is not None else get_geoapify_api_key()
         self.session = requests.Session()
 
-    def _normalize_place(self, raw: Dict[str, Any]) -> Dict[str, Any]:
-        """Normalize Google Places (New) result into standard dictionary."""
+    def _normalize_place(self, raw: Dict[str, Any], category: str = "") -> Dict[str, Any]:
+        """Normalize Google Places (New) result into standard POI dictionary.
+
+        Unified schema: {id, name, address, latitude, longitude,
+                         rating, user_rating_count, category, google_maps_uri}
+        """
         display_name = raw.get("displayName", {})
         name = display_name.get("text") if isinstance(display_name, dict) else str(display_name or "")
 
@@ -109,7 +113,7 @@ class PlacesService:
             "longitude": lng,
             "rating": raw.get("rating"),
             "user_rating_count": raw.get("userRatingCount", 0),
-            "price_level": raw.get("priceLevel"),
+            "category": category or raw.get("category", ""),
             "google_maps_uri": raw.get("googleMapsUri", ""),
         }
 
@@ -150,8 +154,15 @@ class PlacesService:
             return []
 
         if not self.api_key:
-            # Check if Geoapify key is present or return informative error
             if self.geoapify_key:
+                # If location_bias with circle coordinates provided, use coordinate-based /v2/places
+                if location_bias and "circle" in location_bias:
+                    center = location_bias["circle"].get("center", {})
+                    lat = center.get("latitude")
+                    lng = center.get("longitude")
+                    radius = location_bias["circle"].get("radius", 5000)
+                    if lat and lng:
+                        return self.search_geoapify_nearby(lat, lng, radius)
                 return self.search_geoapify(query=query)
             raise PlacesAPIError(
                 "Missing Google Maps API key. Please configure GOOGLE_MAPS_API_KEY.",
@@ -168,6 +179,7 @@ class PlacesService:
         payload: Dict[str, Any] = {
             "textQuery": query.strip(),
             "pageSize": min(max(1, max_results), 20),
+            "regionCode": "VN",  # Bias results toward Vietnam
         }
 
         if location_bias:
@@ -263,19 +275,31 @@ class PlacesService:
         })
         return normalized
 
-    # ── Geoapify Adapter Support ──
+    # ── Geoapify Adapter — /v2/places (Coordinate-based, Vietnam-enforced) ──
     def search_geoapify_nearby(
         self,
         latitude: float,
         longitude: float,
         radius_meters: float = 3000,
-        category: str = "catering.restaurant"
+        category: str = "catering.restaurant",
     ) -> List[Dict[str, Any]]:
-        """Search places using Geoapify API if configured."""
+        """Search POI using Geoapify /v2/places API.
+
+        Enforces: filter=circle:{lng},{lat},{radius} + filter=countrycode:vn + lang=vi.
+        Category examples: catering.restaurant, tourism.sights, accommodation.hotel, catering.cafe.
+        """
         if not self.geoapify_key:
             raise PlacesAPIError("Missing GEOAPIFY_API_KEY.", status_code=401, error_type="missing_api_key")
 
-        url = f"{GEOAPIFY_BASE_URL}?categories={category}&filter=circle:{longitude},{latitude},{int(radius_meters)}&apiKey={self.geoapify_key}"
+        url = (
+            f"{GEOAPIFY_BASE_URL}"
+            f"?categories={category}"
+            f"&filter=circle:{longitude},{latitude},{int(radius_meters)}"
+            f"&filter=countrycode:vn"
+            f"&lang=vi"
+            f"&limit=20"
+            f"&apiKey={self.geoapify_key}"
+        )
         try:
             resp = self.session.get(url, timeout=10)
             resp.raise_for_status()
@@ -285,25 +309,44 @@ class PlacesService:
                 props = f.get("properties", {})
                 results.append({
                     "id": props.get("place_id", ""),
-                    "name": props.get("name", props.get("formatted", "Unnamed place")),
+                    "name": props.get("name", props.get("formatted", "Địa điểm không tên")),
                     "address": props.get("formatted", ""),
                     "latitude": props.get("lat"),
                     "longitude": props.get("lon"),
                     "rating": props.get("rating"),
                     "user_rating_count": 0,
-                    "price_level": None,
-                    "google_maps_uri": f"https://www.google.com/maps/search/?api=1&query={props.get('lat')},{props.get('lon')}",
+                    "category": category,
+                    "google_maps_uri": (
+                        f"https://www.google.com/maps/search/?api=1"
+                        f"&query={props.get('lat')},{props.get('lon')}"
+                    ),
                 })
             return results
         except Exception as e:
-            logger.warning("Geoapify request failed: %s", e)
+            logger.warning("Geoapify /v2/places request failed: %s", e)
             raise PlacesAPIError(f"Geoapify request failed: {e}")
 
     def search_geoapify(self, query: str) -> List[Dict[str, Any]]:
-        """Geoapify text search fallback."""
+        """Geoapify text geocoding fallback (limited — prefer search_geoapify_nearby with Lat/Lng).
+
+        DEPRECATED: /v1/geocode/search returns geocoded locations, NOT verified POI data.
+        Used only when no coordinates are available. Enforces countrycode=vn + lang=vi.
+        """
         if not self.geoapify_key:
             raise PlacesAPIError("Missing GEOAPIFY_API_KEY.", status_code=401, error_type="missing_api_key")
-        url = f"https://api.geoapify.com/v1/geocode/search?text={query}&apiKey={self.geoapify_key}"
+
+        logger.warning(
+            "search_geoapify() called without coordinates — using deprecated /v1/geocode/search. "
+            "Prefer search_geoapify_nearby(lat, lng, ...) for accurate POI results."
+        )
+        # Enforce Vietnam + Vietnamese language even on text query
+        url = (
+            f"https://api.geoapify.com/v1/geocode/search"
+            f"?text={query}"
+            f"&filter=countrycode:vn"
+            f"&lang=vi"
+            f"&apiKey={self.geoapify_key}"
+        )
         try:
             resp = self.session.get(url, timeout=10)
             resp.raise_for_status()
@@ -317,10 +360,13 @@ class PlacesService:
                     "address": props.get("formatted", ""),
                     "latitude": props.get("lat"),
                     "longitude": props.get("lon"),
-                    "rating": 4.5,
-                    "user_rating_count": 50,
-                    "price_level": None,
-                    "google_maps_uri": f"https://www.google.com/maps/search/?api=1&query={props.get('lat')},{props.get('lon')}",
+                    "rating": None,
+                    "user_rating_count": 0,
+                    "category": "",
+                    "google_maps_uri": (
+                        f"https://www.google.com/maps/search/?api=1"
+                        f"&query={props.get('lat')},{props.get('lon')}"
+                    ),
                 })
             return results
         except Exception as e:

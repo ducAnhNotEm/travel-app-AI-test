@@ -123,12 +123,14 @@ st.markdown("""
 
 
 def init_state():
+    from src.travel_planner.destinations import DESTINATIONS_CATALOG
+    first_dest_key = next(iter(DESTINATIONS_CATALOG.keys()))
     defaults = {
         "config": load_config(),
         "plan_result": None,
-        "active_trip_id": "danang-2026",
-        "trip_name": "Da Nang Group Vacation",
-        "destination": "Da Nang",
+        "active_trip_id": None,
+        "trip_name": "",
+        "destination": first_dest_key,
         "travelers": 4,
         "days": 3,
         "fund": None,
@@ -137,13 +139,6 @@ def init_state():
     for k, v in defaults.items():
         if k not in st.session_state:
             st.session_state[k] = v
-
-    if st.session_state.fund is None:
-        st.session_state.fund = fund_manager.get_fund("danang-2026") or fund_manager.create_fund(
-            trip_id="danang-2026",
-            target_amount=6_600_000,
-            member_names=["Anh", "Minh", "Lan", "Hung"]
-        )
 
 
 def main():
@@ -185,9 +180,9 @@ def main():
             st.rerun()
 
         st.markdown("---")
-        st.markdown("### 👥 Active Trip Info")
-        st.text(f"Trip ID: {st.session_state.active_trip_id}")
-        st.text(f"Name: {st.session_state.trip_name}")
+        st.markdown("### 👥 Thông tin Chuyến đi")
+        st.text(f"Trip ID: {st.session_state.active_trip_id or 'Chưa tạo chuyến đi'}")
+        st.text(f"Tên chuyến: {st.session_state.trip_name or 'Chưa đặt tên'}")
 
     # Tabs for TripMate Flow: 3 streamlined, highly interactive SaaS tabs
     tab_planner, tab_places, tab_fund = st.tabs([
@@ -218,12 +213,16 @@ def main():
             
             if selected_dest_key == "Other (Custom Destination)...":
                 active_dest = col_t2.text_input("Nhập tên điểm đến:", value="Hạ Long")
-                dest_tags = ["🍜 Ẩm thực", "🏖️ Ngắm cảnh", "📸 Check-in", "☕ Cafe"]
+                dest_tags = ["🍴 Ẩm thực", "🏖️ Ngắm cảnh", "📸 Check-in", "☕ Cafe"]
             else:
                 dest_info = DESTINATIONS_CATALOG[selected_dest_key]
                 active_dest = dest_info["name"]
                 dest_tags = dest_info.get("tags", [])
-                col_t2.text_input("Quốc gia / Khu vực:", value=dest_info.get("country", "Vietnam"), disabled=True)
+                col_t2.text_input(
+                    "Tỉnh / Thành phố:",
+                    value=dest_info.get("province", "Việt Nam"),
+                    disabled=True,
+                )
 
             col_d1, col_d2 = st.columns(2)
             travelers_count = col_d1.slider("Số lượng thành viên (Travelers):", min_value=1, max_value=20, value=4)
@@ -275,14 +274,21 @@ def main():
                         st.session_state.travelers = travelers_count
                         st.session_state.days = days_count
 
+                        # Generate dynamic trip_id from destination name
+                        import re as _re
+                        safe_dest = _re.sub(r"[^a-z0-9]", "-", active_dest.lower())[:16].strip("-")
+                        trip_id = f"{safe_dest}-2026"
+                        st.session_state.active_trip_id = trip_id
+                        st.session_state.trip_name = f"Chuyến du lịch {active_dest}"
+
                         # Sync with Trip Fund target
                         total_budget = plan_res["budget"]["total"]
                         fund_manager.create_fund(
-                            trip_id=st.session_state.active_trip_id,
+                            trip_id=trip_id,
                             target_amount=total_budget,
-                            member_names=["Thành viên 1", "Thành viên 2", "Thành viên 3", "Thành viên 4"][:travelers_count] or ["Thành viên 1"]
+                            member_names=([f"Thành viên {i+1}" for i in range(travelers_count)] or ["Thành viên 1"])
                         )
-                        st.session_state.fund = fund_manager.get_fund(st.session_state.active_trip_id)
+                        st.session_state.fund = fund_manager.get_fund(trip_id)
                         st.success(f"✓ Đã tạo thành công lịch trình {active_dest} với địa điểm thật & dự toán ngân sách!")
                     except Exception as e:
                         st.error(f"Lỗi khởi tạo lịch trình: {e}")
@@ -308,6 +314,7 @@ def main():
             if selected_dest_key != "Other (Custom Destination)...":
                 info = DESTINATIONS_CATALOG[selected_dest_key]
                 st.caption(f"📍 Toạ độ trung tâm: `{info['latitude']}, {info['longitude']}`")
+                st.caption(f"🏠 Tỉnh / Thành phố: **{info.get('province', 'Việt Nam')}**")
 
         # Display Result
         if st.session_state.plan_result:
@@ -421,14 +428,16 @@ def main():
         st.markdown("### 💳 Quản lý Quỹ Nhóm Tạm Thời (Temporary Trip Fund)")
         st.caption("Theo dõi mục tiêu quỹ, phần đóng góp của từng thành viên và tự động xác nhận chuyến đi khi gom đủ tiền.")
 
-        fund = fund_manager.get_fund(st.session_state.active_trip_id)
+        trip_id = st.session_state.get("active_trip_id") or "trip-default"
+        fund = fund_manager.get_fund(trip_id)
         if not fund:
             fund = fund_manager.create_fund(
-                trip_id=st.session_state.active_trip_id,
+                trip_id=trip_id,
                 target_amount=6_600_000,
                 member_names=["Thành viên 1", "Thành viên 2", "Thành viên 3", "Thành viên 4"]
             )
             st.session_state.fund = fund
+            st.session_state.active_trip_id = trip_id
 
         # Status Banner
         fcol1, fcol2, fcol3 = st.columns(3)
@@ -472,7 +481,7 @@ def main():
 
             if cf3.button("Xác nhận đóng"):
                 try:
-                    fund_manager.contribute(st.session_state.active_trip_id, contrib_member, contrib_amount)
+                    fund_manager.contribute(trip_id, contrib_member, contrib_amount)
                     st.success(f"Đã ghi nhận {int(contrib_amount):,} VND cho {contrib_member}!")
                     st.rerun()
                 except Exception as e:

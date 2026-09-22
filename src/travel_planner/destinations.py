@@ -1,77 +1,25 @@
 """Destinations Catalog and Metadata for TripMate.
 
-Provides rich metadata, GPS coordinates, popular travel categories,
-curated attraction queries, and verified sample places for offline/dev fallback.
+Vietnam-centric catalog: 34 Merged Provinces/Cities + Key Tourism Hubs.
+Provides GPS coordinates, province info, tags, and verified sample places
+for offline/dev fallback.
+
+Localization rules:
+- UI labels & descriptions: Tiếng Việt
+- Official brand/venue names: kept in canonical registered form
 """
 
 from typing import Dict, Any, List, Optional
 
 DESTINATIONS_CATALOG: Dict[str, Dict[str, Any]] = {
-    "Đà Nẵng": {
-        "id": "danang",
-        "name": "Đà Nẵng",
-        "country": "Vietnam",
-        "latitude": 16.0544,
-        "longitude": 108.2022,
-        "tags": ["🍜 Ẩm thực miền Trung", "🏖️ Biển Mỹ Khê", "🌉 Cầu Rồng", "⛰️ Ngũ Hành Sơn", "☕ Cafe ven sông"],
-        "default_queries": [
-            {"category": "restaurant", "query": "nhà hàng hải sản đặc sản Đà Nẵng"},
-            {"category": "attraction", "query": "địa điểm tham quan nổi tiếng Đà Nẵng"}
-        ],
-        "sample_places": [
-            {
-                "id": "places/danang_madame_lan",
-                "name": "Madame Lan Restaurant",
-                "address": "04 Bạch Đằng, Thạch Thang, Hải Châu, Đà Nẵng",
-                "latitude": 16.0827,
-                "longitude": 108.2238,
-                "rating": 4.5,
-                "user_rating_count": 4200,
-                "category": "restaurant"
-            },
-            {
-                "id": "places/danang_bep_cuon",
-                "name": "Bếp Cuốn Đà Nẵng",
-                "address": "54 Nguyễn Văn Thoại, Ngũ Hành Sơn, Đà Nẵng",
-                "latitude": 16.0592,
-                "longitude": 108.2415,
-                "rating": 4.8,
-                "user_rating_count": 2500,
-                "category": "restaurant"
-            },
-            {
-                "id": "places/danang_dragon_bridge",
-                "name": "Cầu Rồng (Dragon Bridge)",
-                "address": "Đường Nguyễn Văn Linh, Phước Ninh, Hải Châu, Đà Nẵng",
-                "latitude": 16.0611,
-                "longitude": 108.2272,
-                "rating": 4.7,
-                "user_rating_count": 15600,
-                "category": "attraction"
-            },
-            {
-                "id": "places/danang_marble_mountains",
-                "name": "Ngũ Hành Sơn (Marble Mountains)",
-                "address": "81 Huyền Trân Công Chúa, Hoà Hải, Ngũ Hành Sơn, Đà Nẵng",
-                "latitude": 16.0041,
-                "longitude": 108.2635,
-                "rating": 4.6,
-                "user_rating_count": 13800,
-                "category": "attraction"
-            }
-        ]
-    },
+    # ─── MAJOR CITIES ────────────────────────────────────────────
     "Hà Nội": {
         "id": "hanoi",
         "name": "Hà Nội",
-        "country": "Vietnam",
+        "province": "Hà Nội",
         "latitude": 21.0285,
         "longitude": 105.8542,
         "tags": ["🍜 Phở & Bún chả", "🏰 Phố cổ 36 phố phường", "🏛️ Hồ Gươm & Lăng Bác", "☕ Cà phê trứng"],
-        "default_queries": [
-            {"category": "restaurant", "query": "nhà hàng đặc sản phố cổ Hà Nội"},
-            {"category": "attraction", "query": "di tích và điểm tham quan Hà Nội"}
-        ],
         "sample_places": [
             {
                 "id": "places/hanoi_bun_cha_huong_lien",
@@ -81,7 +29,7 @@ DESTINATIONS_CATALOG: Dict[str, Dict[str, Any]] = {
                 "longitude": 105.8532,
                 "rating": 4.3,
                 "user_rating_count": 6800,
-                "category": "restaurant"
+                "category": "restaurant",
             },
             {
                 "id": "places/hanoi_giang_cafe",
@@ -91,7 +39,7 @@ DESTINATIONS_CATALOG: Dict[str, Dict[str, Any]] = {
                 "longitude": 105.8539,
                 "rating": 4.5,
                 "user_rating_count": 7900,
-                "category": "restaurant"
+                "category": "restaurant",
             },
             {
                 "id": "places/hanoi_hoan_kiem_lake",
@@ -101,7 +49,7 @@ DESTINATIONS_CATALOG: Dict[str, Dict[str, Any]] = {
                 "longitude": 105.8524,
                 "rating": 4.7,
                 "user_rating_count": 21000,
-                "category": "attraction"
+                "category": "attraction",
             },
             {
                 "id": "places/hanoi_temple_of_literature",
@@ -111,21 +59,17 @@ DESTINATIONS_CATALOG: Dict[str, Dict[str, Any]] = {
                 "longitude": 105.8355,
                 "rating": 4.6,
                 "user_rating_count": 16400,
-                "category": "attraction"
-            }
-        ]
+                "category": "attraction",
+            },
+        ],
     },
     "TP. Hồ Chí Minh": {
         "id": "hcm",
         "name": "TP. Hồ Chí Minh",
-        "country": "Vietnam",
+        "province": "TP. Hồ Chí Minh",
         "latitude": 10.8231,
         "longitude": 106.6297,
         "tags": ["🌆 Sài Gòn Nightlife", "🍢 Ẩm thực đường phố", "🏛️ Dinh Độc Lập", "☕ Cà phê bệt Nhà thờ Đức Bà"],
-        "default_queries": [
-            {"category": "restaurant", "query": "nhà hàng ẩm thực Sài Gòn quận 1"},
-            {"category": "attraction", "query": "điểm du lịch nổi tiếng Sài Gòn"}
-        ],
         "sample_places": [
             {
                 "id": "places/hcm_cuc_gach_quan",
@@ -135,7 +79,7 @@ DESTINATIONS_CATALOG: Dict[str, Dict[str, Any]] = {
                 "longitude": 106.6896,
                 "rating": 4.4,
                 "user_rating_count": 3600,
-                "category": "restaurant"
+                "category": "restaurant",
             },
             {
                 "id": "places/hcm_independence_palace",
@@ -145,7 +89,7 @@ DESTINATIONS_CATALOG: Dict[str, Dict[str, Any]] = {
                 "longitude": 106.6954,
                 "rating": 4.6,
                 "user_rating_count": 28000,
-                "category": "attraction"
+                "category": "attraction",
             },
             {
                 "id": "places/hcm_ben_thanh",
@@ -155,21 +99,68 @@ DESTINATIONS_CATALOG: Dict[str, Dict[str, Any]] = {
                 "longitude": 106.6980,
                 "rating": 4.3,
                 "user_rating_count": 32000,
-                "category": "attraction"
-            }
-        ]
+                "category": "attraction",
+            },
+        ],
     },
+    "Đà Nẵng": {
+        "id": "danang",
+        "name": "Đà Nẵng",
+        "province": "Đà Nẵng",
+        "latitude": 16.0544,
+        "longitude": 108.2022,
+        "tags": ["🍜 Ẩm thực miền Trung", "🏖️ Biển Mỹ Khê", "🌉 Cầu Rồng", "⛰️ Ngũ Hành Sơn", "☕ Cafe ven sông"],
+        "sample_places": [
+            {
+                "id": "places/danang_madame_lan",
+                "name": "Madame Lan Restaurant",
+                "address": "04 Bạch Đằng, Thạch Thang, Hải Châu, Đà Nẵng",
+                "latitude": 16.0827,
+                "longitude": 108.2238,
+                "rating": 4.5,
+                "user_rating_count": 4200,
+                "category": "restaurant",
+            },
+            {
+                "id": "places/danang_bep_cuon",
+                "name": "Bếp Cuốn Đà Nẵng",
+                "address": "54 Nguyễn Văn Thoại, Ngũ Hành Sơn, Đà Nẵng",
+                "latitude": 16.0592,
+                "longitude": 108.2415,
+                "rating": 4.8,
+                "user_rating_count": 2500,
+                "category": "restaurant",
+            },
+            {
+                "id": "places/danang_dragon_bridge",
+                "name": "Cầu Rồng (Dragon Bridge)",
+                "address": "Đường Nguyễn Văn Linh, Phước Ninh, Hải Châu, Đà Nẵng",
+                "latitude": 16.0611,
+                "longitude": 108.2272,
+                "rating": 4.7,
+                "user_rating_count": 15600,
+                "category": "attraction",
+            },
+            {
+                "id": "places/danang_marble_mountains",
+                "name": "Ngũ Hành Sơn (Marble Mountains)",
+                "address": "81 Huyền Trân Công Chúa, Hoà Hải, Ngũ Hành Sơn, Đà Nẵng",
+                "latitude": 16.0041,
+                "longitude": 108.2635,
+                "rating": 4.6,
+                "user_rating_count": 13800,
+                "category": "attraction",
+            },
+        ],
+    },
+    # ─── KEY TOURISM HUBS ─────────────────────────────────────────
     "Phú Quốc": {
         "id": "phuquoc",
         "name": "Phú Quốc",
-        "country": "Vietnam",
+        "province": "Kiên Giang",
         "latitude": 10.2899,
         "longitude": 103.9840,
-        "tags": ["🏖️ Bãi Sao & Sunset Sanato", "🦀 Hải sản Hàm Ninh", "🤿 Lặn ngắm san hô", "🌅 Hoàng hôn Bãi Trường"],
-        "default_queries": [
-            {"category": "restaurant", "query": "hải sản tươi sống Phú Quốc"},
-            {"category": "attraction", "query": "bãi biển và đảo ngọc Phú Quốc"}
-        ],
+        "tags": ["🏖️ Bãi Sao & Sunset Sanato", "🦀 Hải sản Hàm Ninh", "🤿 Lặn ngắm san hô", "🎡 VinWonders Phú Quốc"],
         "sample_places": [
             {
                 "id": "places/pq_xin_chao",
@@ -179,7 +170,7 @@ DESTINATIONS_CATALOG: Dict[str, Dict[str, Any]] = {
                 "longitude": 103.9572,
                 "rating": 4.4,
                 "user_rating_count": 3400,
-                "category": "restaurant"
+                "category": "restaurant",
             },
             {
                 "id": "places/pq_bai_sao",
@@ -189,75 +180,117 @@ DESTINATIONS_CATALOG: Dict[str, Dict[str, Any]] = {
                 "longitude": 104.0321,
                 "rating": 4.5,
                 "user_rating_count": 11500,
-                "category": "attraction"
+                "category": "attraction",
             },
             {
-                "id": "places/pq_hon_thom",
-                "name": "Cáp treo Hòn Thơm Sun World",
-                "address": "Bãi Đất Đỏ, An Thới, Phú Quốc",
-                "latitude": 10.0264,
-                "longitude": 104.0125,
-                "rating": 4.7,
-                "user_rating_count": 14200,
-                "category": "attraction"
-            }
-        ]
-    },
-    "Đà Lạt": {
-        "id": "dalat",
-        "name": "Đà Lạt",
-        "country": "Vietnam",
-        "latitude": 11.9404,
-        "longitude": 108.4583,
-        "tags": ["🍓 Vườn dâu & Săn mây", "☕ Cafe đồi thông", "🥖 Bánh mì xíu mại & Lẩu gà lá é", "🌸 Hồ Xuân Hương"],
-        "default_queries": [
-            {"category": "restaurant", "query": "quán ăn ngon đặc sản Đà Lạt"},
-            {"category": "attraction", "query": "địa điểm săn mây ngắm cảnh Đà Lạt"}
+                "id": "places/pq_vinwonders",
+                "name": "VinWonders Phú Quốc",
+                "address": "Bãi Dài, Gành Dầu, Phú Quốc, Kiên Giang",
+                "latitude": 10.3356,
+                "longitude": 103.8451,
+                "rating": 4.6,
+                "user_rating_count": 18400,
+                "category": "attraction",
+            },
+            {
+                "id": "places/pq_ham_ninh",
+                "name": "Làng Chài Hàm Ninh",
+                "address": "Hàm Ninh, Phú Quốc, Kiên Giang",
+                "latitude": 10.1937,
+                "longitude": 104.0423,
+                "rating": 4.3,
+                "user_rating_count": 5200,
+                "category": "attraction",
+            },
         ],
+    },
+    "Hạ Long": {
+        "id": "halong",
+        "name": "Hạ Long",
+        "province": "Quảng Ninh",
+        "latitude": 20.9599,
+        "longitude": 107.0425,
+        "tags": ["🛥️ Vịnh Hạ Long - Di sản UNESCO", "🏔️ Hang Đầu Gỗ", "🦀 Hải sản tươi sống", "🌅 Bình minh trên vịnh"],
         "sample_places": [
             {
-                "id": "places/dalat_lau_ga_tao_ngo",
-                "name": "Lẩu Gà Lá É Tao Ngộ",
-                "address": "Số 5 Đường 3 Tháng 4, Phường 3, Đà Lạt",
-                "latitude": 11.9312,
-                "longitude": 108.4451,
-                "rating": 4.3,
-                "user_rating_count": 4800,
-                "category": "restaurant"
+                "id": "places/halong_vinh",
+                "name": "Vịnh Hạ Long",
+                "address": "Vịnh Hạ Long, TP. Hạ Long, Quảng Ninh",
+                "latitude": 20.9101,
+                "longitude": 107.1839,
+                "rating": 4.8,
+                "user_rating_count": 65000,
+                "category": "attraction",
             },
             {
-                "id": "places/dalat_xuan_huong_lake",
-                "name": "Hồ Xuân Hương",
-                "address": "Trung tâm Phường 1, Đà Lạt",
-                "latitude": 11.9424,
-                "longitude": 108.4459,
-                "rating": 4.6,
-                "user_rating_count": 18500,
-                "category": "attraction"
-            },
-            {
-                "id": "places/dalat_langbiang",
-                "name": "Đỉnh Langbiang",
-                "address": "Thị trấn Lạc Dương, Lạc Dương, Lâm Đồng",
-                "latitude": 12.0464,
-                "longitude": 108.4357,
+                "id": "places/halong_hang_dau_go",
+                "name": "Hang Đầu Gỗ",
+                "address": "Đảo Đầu Gỗ, Vịnh Hạ Long, Quảng Ninh",
+                "latitude": 20.9022,
+                "longitude": 107.0782,
                 "rating": 4.5,
-                "user_rating_count": 13200,
-                "category": "attraction"
-            }
-        ]
+                "user_rating_count": 12300,
+                "category": "attraction",
+            },
+            {
+                "id": "places/halong_hai_san_ben_cang",
+                "name": "Nhà Hàng Hải Sản Bến Cảng",
+                "address": "Bến Cảng Hạ Long, TP. Hạ Long, Quảng Ninh",
+                "latitude": 20.9610,
+                "longitude": 107.0468,
+                "rating": 4.2,
+                "user_rating_count": 2800,
+                "category": "restaurant",
+            },
+        ],
+    },
+    "Sa Pa": {
+        "id": "sapa",
+        "name": "Sa Pa",
+        "province": "Lào Cai",
+        "latitude": 22.3364,
+        "longitude": 103.8438,
+        "tags": ["🏔️ Fansipan - Nóc nhà Đông Dương", "🌾 Ruộng bậc thang Mù Cang Chải", "🌸 Hoa đào Sa Pa", "🧣 Chợ phiên H'Mông"],
+        "sample_places": [
+            {
+                "id": "places/sapa_fansipan",
+                "name": "Sun World Fansipan Legend",
+                "address": "Đường Cáp Treo Fansipan, Sa Pa, Lào Cai",
+                "latitude": 22.3028,
+                "longitude": 103.7761,
+                "rating": 4.7,
+                "user_rating_count": 42000,
+                "category": "attraction",
+            },
+            {
+                "id": "places/sapa_muong_hoa",
+                "name": "Thung Lũng Mường Hoa",
+                "address": "Lao Chải, Sa Pa, Lào Cai",
+                "latitude": 22.2967,
+                "longitude": 103.8764,
+                "rating": 4.5,
+                "user_rating_count": 8700,
+                "category": "attraction",
+            },
+            {
+                "id": "places/sapa_hill_station",
+                "name": "Hill Station Signature Restaurant",
+                "address": "37 Phạm Xuân Huân, Sa Pa, Lào Cai",
+                "latitude": 22.3368,
+                "longitude": 103.8435,
+                "rating": 4.4,
+                "user_rating_count": 3900,
+                "category": "restaurant",
+            },
+        ],
     },
     "Hội An": {
         "id": "hoian",
         "name": "Hội An",
-        "country": "Vietnam",
+        "province": "Quảng Nam",
         "latitude": 15.8801,
         "longitude": 108.3380,
         "tags": ["🏮 Đèn lồng Phố cổ", "🥖 Bánh mì Phượng", "🍜 Cao lầu & Cơm gà", "🛶 Thả hoa đăng sông Hoài"],
-        "default_queries": [
-            {"category": "restaurant", "query": "đặc sản cao lầu cơm gà Hội An"},
-            {"category": "attraction", "query": "phố cổ Hội An và làng nghề"}
-        ],
         "sample_places": [
             {
                 "id": "places/hoian_banh_mi_phuong",
@@ -267,7 +300,7 @@ DESTINATIONS_CATALOG: Dict[str, Dict[str, Any]] = {
                 "longitude": 108.3315,
                 "rating": 4.4,
                 "user_rating_count": 9200,
-                "category": "restaurant"
+                "category": "restaurant",
             },
             {
                 "id": "places/hoian_chua_cau",
@@ -277,80 +310,761 @@ DESTINATIONS_CATALOG: Dict[str, Dict[str, Any]] = {
                 "longitude": 108.3258,
                 "rating": 4.5,
                 "user_rating_count": 12700,
-                "category": "attraction"
-            }
-        ]
-    },
-    "Tokyo": {
-        "id": "tokyo",
-        "name": "Tokyo",
-        "country": "Japan",
-        "latitude": 35.6762,
-        "longitude": 139.6503,
-        "tags": ["🍣 Sushi & Ramen", "🗼 Tokyo Tower & Skytree", "🏮 Asakusa Sensoji", "🛍️ Shibuya Crossing"],
-        "default_queries": [
-            {"category": "restaurant", "query": "best ramen and sushi spots Tokyo"},
-            {"category": "attraction", "query": "top landmarks and temples Tokyo"}
-        ],
-        "sample_places": [
-            {
-                "id": "places/tokyo_sensoji",
-                "name": "Sensō-ji Temple (浅草寺)",
-                "address": "2-3-1 Asakusa, Taito City, Tokyo",
-                "latitude": 35.7148,
-                "longitude": 139.7967,
-                "rating": 4.6,
-                "user_rating_count": 65000,
-                "category": "attraction"
+                "category": "attraction",
             },
             {
-                "id": "places/tokyo_shibuya",
-                "name": "Shibuya Scramble Crossing",
-                "address": "Shibuya, Tokyo",
-                "latitude": 35.6595,
-                "longitude": 139.7005,
-                "rating": 4.5,
-                "user_rating_count": 48000,
-                "category": "attraction"
-            }
-        ]
-    },
-    "Bangkok": {
-        "id": "bangkok",
-        "name": "Bangkok",
-        "country": "Thailand",
-        "latitude": 13.7563,
-        "longitude": 100.5018,
-        "tags": ["🍜 Pad Thai & Tom Yum", "🛕 Wat Arun & Grand Palace", "🛍️ Chatuchak Market", "⛴️ Chao Phraya Cruise"],
-        "default_queries": [
-            {"category": "restaurant", "query": "top street food and restaurants Bangkok"},
-            {"category": "attraction", "query": "famous temples and palaces Bangkok"}
+                "id": "places/hoian_pho_co",
+                "name": "Phố Cổ Hội An",
+                "address": "Trần Phú, Phường Minh An, Hội An, Quảng Nam",
+                "latitude": 15.8794,
+                "longitude": 108.3290,
+                "rating": 4.8,
+                "user_rating_count": 25000,
+                "category": "attraction",
+            },
         ],
+    },
+    "Đà Lạt": {
+        "id": "dalat",
+        "name": "Đà Lạt",
+        "province": "Lâm Đồng",
+        "latitude": 11.9404,
+        "longitude": 108.4583,
+        "tags": ["🍓 Vườn dâu & Săn mây", "☕ Cafe đồi thông", "🥖 Bánh mì xíu mại & Lẩu gà lá é", "🌸 Hồ Xuân Hương"],
         "sample_places": [
             {
-                "id": "places/bkk_wat_arun",
-                "name": "Wat Arun (Temple of Dawn)",
-                "address": "Bangkok Yai, Bangkok",
-                "latitude": 13.7437,
-                "longitude": 100.4889,
+                "id": "places/dalat_lau_ga_tao_ngo",
+                "name": "Lẩu Gà Lá É Tao Ngộ",
+                "address": "Số 5 Đường 3 Tháng 4, Phường 3, Đà Lạt",
+                "latitude": 11.9312,
+                "longitude": 108.4451,
+                "rating": 4.3,
+                "user_rating_count": 4800,
+                "category": "restaurant",
+            },
+            {
+                "id": "places/dalat_xuan_huong_lake",
+                "name": "Hồ Xuân Hương",
+                "address": "Trung tâm Phường 1, Đà Lạt",
+                "latitude": 11.9424,
+                "longitude": 108.4459,
+                "rating": 4.6,
+                "user_rating_count": 18500,
+                "category": "attraction",
+            },
+            {
+                "id": "places/dalat_langbiang",
+                "name": "Đỉnh Langbiang",
+                "address": "Thị trấn Lạc Dương, Lạc Dương, Lâm Đồng",
+                "latitude": 12.0464,
+                "longitude": 108.4357,
+                "rating": 4.5,
+                "user_rating_count": 13200,
+                "category": "attraction",
+            },
+        ],
+    },
+    "Nha Trang": {
+        "id": "nhatrang",
+        "name": "Nha Trang",
+        "province": "Khánh Hòa",
+        "latitude": 12.2388,
+        "longitude": 109.1967,
+        "tags": ["🏖️ Bãi Biển Nha Trang", "🤿 Lặn biển Hòn Mun", "🛕 Tháp Chàm Ponagar", "🍢 Bánh căn & Nem nướng"],
+        "sample_places": [
+            {
+                "id": "places/nt_ponagar",
+                "name": "Tháp Bà Ponagar",
+                "address": "2 Tháng 4, Vĩnh Phước, Nha Trang, Khánh Hòa",
+                "latitude": 12.2652,
+                "longitude": 109.1948,
+                "rating": 4.5,
+                "user_rating_count": 14200,
+                "category": "attraction",
+            },
+            {
+                "id": "places/nt_hon_mun",
+                "name": "Đảo Hòn Mun",
+                "address": "Hòn Mun, Nha Trang, Khánh Hòa",
+                "latitude": 12.1600,
+                "longitude": 109.2900,
+                "rating": 4.6,
+                "user_rating_count": 9800,
+                "category": "attraction",
+            },
+            {
+                "id": "places/nt_hai_san_xanh",
+                "name": "Nhà Hàng Hải Sản Xanh",
+                "address": "72 Trần Phú, Lộc Thọ, Nha Trang, Khánh Hòa",
+                "latitude": 12.2452,
+                "longitude": 109.1943,
+                "rating": 4.3,
+                "user_rating_count": 2900,
+                "category": "restaurant",
+            },
+        ],
+    },
+    "Huế": {
+        "id": "hue",
+        "name": "Huế",
+        "province": "Thừa Thiên Huế",
+        "latitude": 16.4637,
+        "longitude": 107.5909,
+        "tags": ["🏯 Đại Nội Huế", "🍜 Bún bò Huế", "⛵ Du thuyền sông Hương", "🌸 Lăng tẩm vua Nguyễn"],
+        "sample_places": [
+            {
+                "id": "places/hue_dai_noi",
+                "name": "Đại Nội Huế (Imperial City)",
+                "address": "23 Tháng 8, Thuận Thành, TP. Huế, Thừa Thiên Huế",
+                "latitude": 16.4698,
+                "longitude": 107.5773,
+                "rating": 4.6,
+                "user_rating_count": 35000,
+                "category": "attraction",
+            },
+            {
+                "id": "places/hue_bun_bo_me_hoa",
+                "name": "Bún Bò Huế Mệ Hoa",
+                "address": "17 Lý Thường Kiệt, Phú Nhuận, TP. Huế",
+                "latitude": 16.4621,
+                "longitude": 107.5946,
+                "rating": 4.4,
+                "user_rating_count": 4500,
+                "category": "restaurant",
+            },
+            {
+                "id": "places/hue_lang_khai_dinh",
+                "name": "Lăng Khải Định",
+                "address": "Khải Định, Hương Thủy, Thừa Thiên Huế",
+                "latitude": 16.3955,
+                "longitude": 107.5897,
+                "rating": 4.5,
+                "user_rating_count": 11200,
+                "category": "attraction",
+            },
+        ],
+    },
+    "Cần Thơ": {
+        "id": "cantho",
+        "name": "Cần Thơ",
+        "province": "Cần Thơ",
+        "latitude": 10.0452,
+        "longitude": 105.7469,
+        "tags": ["🛶 Chợ nổi Cái Răng", "🌊 Sông nước miền Tây", "🍜 Bún mắm & Bánh cống", "🐊 Vườn Cò Bằng Lăng"],
+        "sample_places": [
+            {
+                "id": "places/ct_cho_noi_cai_rang",
+                "name": "Chợ Nổi Cái Răng",
+                "address": "Cái Răng, Cần Thơ",
+                "latitude": 10.0124,
+                "longitude": 105.7698,
+                "rating": 4.4,
+                "user_rating_count": 18600,
+                "category": "attraction",
+            },
+            {
+                "id": "places/ct_ninh_kieu",
+                "name": "Bến Ninh Kiều",
+                "address": "Bến Ninh Kiều, Ninh Kiều, Cần Thơ",
+                "latitude": 10.0365,
+                "longitude": 105.7878,
+                "rating": 4.3,
+                "user_rating_count": 9400,
+                "category": "attraction",
+            },
+            {
+                "id": "places/ct_bun_mam",
+                "name": "Quán Bún Mắm Ngon",
+                "address": "6 Đề Thám, Tân An, Ninh Kiều, Cần Thơ",
+                "latitude": 10.0418,
+                "longitude": 105.7775,
+                "rating": 4.2,
+                "user_rating_count": 2100,
+                "category": "restaurant",
+            },
+        ],
+    },
+    "Ninh Bình": {
+        "id": "ninhbinh",
+        "name": "Ninh Bình",
+        "province": "Ninh Bình",
+        "latitude": 20.2549,
+        "longitude": 105.9745,
+        "tags": ["⛵ Tràng An - Di sản UNESCO", "🏔️ Hang Múa", "🛕 Chùa Bái Đính", "🦌 Vườn QG Cúc Phương"],
+        "sample_places": [
+            {
+                "id": "places/nb_trang_an",
+                "name": "Khu Du Lịch Tràng An",
+                "address": "Tràng An, Hoa Lư, Ninh Bình",
+                "latitude": 20.2797,
+                "longitude": 105.8968,
                 "rating": 4.7,
-                "user_rating_count": 42000,
-                "category": "attraction"
-            }
-        ]
-    }
+                "user_rating_count": 32000,
+                "category": "attraction",
+            },
+            {
+                "id": "places/nb_hang_mua",
+                "name": "Hang Múa (Mua Cave)",
+                "address": "Khê Hạ, Ninh Xuân, Hoa Lư, Ninh Bình",
+                "latitude": 20.2155,
+                "longitude": 105.9148,
+                "rating": 4.5,
+                "user_rating_count": 19700,
+                "category": "attraction",
+            },
+            {
+                "id": "places/nb_bai_dinh",
+                "name": "Chùa Bái Đính",
+                "address": "Gia Sinh, Gia Viễn, Ninh Bình",
+                "latitude": 20.3342,
+                "longitude": 105.8814,
+                "rating": 4.6,
+                "user_rating_count": 14500,
+                "category": "attraction",
+            },
+        ],
+    },
+    "Vũng Tàu": {
+        "id": "vungtau",
+        "name": "Vũng Tàu",
+        "province": "Bà Rịa - Vũng Tàu",
+        "latitude": 10.3460,
+        "longitude": 107.0843,
+        "tags": ["🏖️ Bãi Sau & Bãi Trước", "🦀 Hải sản tươi sống", "⛪ Tượng Chúa Kitô", "🌅 Hoàng hôn Núi Nhỏ"],
+        "sample_places": [
+            {
+                "id": "places/vt_tuong_chua",
+                "name": "Tượng Chúa Kitô Vua",
+                "address": "Núi Nhỏ, Thắng Tam, Vũng Tàu",
+                "latitude": 10.3323,
+                "longitude": 107.0851,
+                "rating": 4.6,
+                "user_rating_count": 16800,
+                "category": "attraction",
+            },
+            {
+                "id": "places/vt_bai_sau",
+                "name": "Bãi Sau (Back Beach)",
+                "address": "Thùy Vân, Vũng Tàu",
+                "latitude": 10.3302,
+                "longitude": 107.0895,
+                "rating": 4.3,
+                "user_rating_count": 12400,
+                "category": "attraction",
+            },
+            {
+                "id": "places/vt_ganh_hao",
+                "name": "Nhà Hàng Hải Sản Gành Hào",
+                "address": "3 Hạ Long, Phường 1, Vũng Tàu",
+                "latitude": 10.3488,
+                "longitude": 107.0856,
+                "rating": 4.3,
+                "user_rating_count": 4600,
+                "category": "restaurant",
+            },
+        ],
+    },
+    "Quy Nhơn": {
+        "id": "quynhon",
+        "name": "Quy Nhơn",
+        "province": "Bình Định",
+        "latitude": 13.7765,
+        "longitude": 109.2237,
+        "tags": ["🏖️ Bãi Xép & Bãi Kỳ Co", "🏊 Đảo Kỳ Co", "🍜 Bánh xèo tôm nhảy", "🏔️ Ghềnh Ráng"],
+        "sample_places": [
+            {
+                "id": "places/qn_ky_co",
+                "name": "Đảo Kỳ Co",
+                "address": "Nhơn Lý, TP. Quy Nhơn, Bình Định",
+                "latitude": 13.7139,
+                "longitude": 109.2659,
+                "rating": 4.7,
+                "user_rating_count": 21000,
+                "category": "attraction",
+            },
+            {
+                "id": "places/qn_ghenh_rang",
+                "name": "Ghềnh Ráng - Tiên Sa",
+                "address": "Ghềnh Ráng, TP. Quy Nhơn, Bình Định",
+                "latitude": 13.7527,
+                "longitude": 109.2412,
+                "rating": 4.4,
+                "user_rating_count": 8900,
+                "category": "attraction",
+            },
+            {
+                "id": "places/qn_banh_xeo",
+                "name": "Bánh Xèo Tôm Nhảy Bình Định",
+                "address": "12 Nguyễn Trung Trực, TP. Quy Nhơn, Bình Định",
+                "latitude": 13.7728,
+                "longitude": 109.2168,
+                "rating": 4.4,
+                "user_rating_count": 3200,
+                "category": "restaurant",
+            },
+        ],
+    },
+    "Mũi Né": {
+        "id": "muine",
+        "name": "Mũi Né",
+        "province": "Bình Thuận",
+        "latitude": 10.9304,
+        "longitude": 108.1098,
+        "tags": ["🏜️ Đồi cát đỏ & Đồi cát trắng", "🏄 Kitesurfing", "🌊 Suối Tiên", "🐟 Làng chài Mũi Né"],
+        "sample_places": [
+            {
+                "id": "places/mn_doi_cat_do",
+                "name": "Đồi Cát Đỏ (Red Sand Dunes)",
+                "address": "Mũi Né, Phan Thiết, Bình Thuận",
+                "latitude": 10.9505,
+                "longitude": 108.1235,
+                "rating": 4.3,
+                "user_rating_count": 12600,
+                "category": "attraction",
+            },
+            {
+                "id": "places/mn_suoi_tien",
+                "name": "Suối Tiên Mũi Né",
+                "address": "Hàm Tiến, Phan Thiết, Bình Thuận",
+                "latitude": 11.0006,
+                "longitude": 108.1462,
+                "rating": 4.2,
+                "user_rating_count": 7400,
+                "category": "attraction",
+            },
+        ],
+    },
+    "Hải Phòng": {
+        "id": "haiphong",
+        "name": "Hải Phòng",
+        "province": "Hải Phòng",
+        "latitude": 20.8449,
+        "longitude": 106.6881,
+        "tags": ["🏝️ Đảo Cát Bà", "🦞 Hải sản Đồ Sơn", "🍜 Bánh đa cua", "🌲 Vườn QG Cát Bà"],
+        "sample_places": [
+            {
+                "id": "places/hp_cat_ba",
+                "name": "Đảo Cát Bà",
+                "address": "Cát Bà, Hải Phòng",
+                "latitude": 20.7268,
+                "longitude": 107.0479,
+                "rating": 4.6,
+                "user_rating_count": 24000,
+                "category": "attraction",
+            },
+            {
+                "id": "places/hp_banh_da_cua",
+                "name": "Bánh Đa Cua Tiến Thọ",
+                "address": "162 Trần Nguyên Hãn, Hải Phòng",
+                "latitude": 20.8641,
+                "longitude": 106.6834,
+                "rating": 4.3,
+                "user_rating_count": 3100,
+                "category": "restaurant",
+            },
+        ],
+    },
+    # ─── NORTHERN PROVINCES ───────────────────────────────────────
+    "Hà Giang": {
+        "id": "hagiang",
+        "name": "Hà Giang",
+        "province": "Hà Giang",
+        "latitude": 22.8233,
+        "longitude": 104.9836,
+        "tags": ["🏔️ Đèo Mã Pí Lèng", "🌸 Hoa tam giác mạch", "🌾 Cao nguyên đá Đồng Văn", "🛣️ Tuyến đường Hạnh Phúc"],
+        "sample_places": [
+            {
+                "id": "places/hg_ma_pi_leng",
+                "name": "Đèo Mã Pí Lèng",
+                "address": "Mèo Vạc, Hà Giang",
+                "latitude": 23.1667,
+                "longitude": 105.3794,
+                "rating": 4.9,
+                "user_rating_count": 15600,
+                "category": "attraction",
+            },
+            {
+                "id": "places/hg_dong_van",
+                "name": "Cao Nguyên Đá Đồng Văn",
+                "address": "Đồng Văn, Hà Giang",
+                "latitude": 23.2716,
+                "longitude": 105.3651,
+                "rating": 4.7,
+                "user_rating_count": 11200,
+                "category": "attraction",
+            },
+        ],
+    },
+    "Lào Cai": {
+        "id": "laocai",
+        "name": "Lào Cai",
+        "province": "Lào Cai",
+        "latitude": 22.4856,
+        "longitude": 103.9754,
+        "tags": ["🏔️ Sa Pa & Fansipan", "🌸 Thung lũng Mường Hoa", "🛒 Chợ Bắc Hà", "☕ Cà phê núi rừng"],
+        "sample_places": [
+            {
+                "id": "places/lc_bac_ha",
+                "name": "Chợ Phiên Bắc Hà",
+                "address": "Bắc Hà, Lào Cai",
+                "latitude": 22.5311,
+                "longitude": 104.2792,
+                "rating": 4.5,
+                "user_rating_count": 8900,
+                "category": "attraction",
+            },
+        ],
+    },
+    "Cao Bằng": {
+        "id": "caobang",
+        "name": "Cao Bằng",
+        "province": "Cao Bằng",
+        "latitude": 22.6660,
+        "longitude": 106.2638,
+        "tags": ["🌊 Thác Bản Giốc", "🏔️ Động Ngườm Ngao", "🌿 Khu dự trữ sinh quyển Non Nước", "🏛️ Pắc Bó"],
+        "sample_places": [
+            {
+                "id": "places/cb_ban_gioc",
+                "name": "Thác Bản Giốc",
+                "address": "Đàm Thủy, Trùng Khánh, Cao Bằng",
+                "latitude": 22.8577,
+                "longitude": 106.7076,
+                "rating": 4.9,
+                "user_rating_count": 22400,
+                "category": "attraction",
+            },
+            {
+                "id": "places/cb_nguom_ngao",
+                "name": "Động Ngườm Ngao",
+                "address": "Đàm Thủy, Trùng Khánh, Cao Bằng",
+                "latitude": 22.8623,
+                "longitude": 106.7041,
+                "rating": 4.6,
+                "user_rating_count": 7800,
+                "category": "attraction",
+            },
+        ],
+    },
+    "Điện Biên": {
+        "id": "dienbien",
+        "name": "Điện Biên Phủ",
+        "province": "Điện Biên",
+        "latitude": 21.3860,
+        "longitude": 103.0160,
+        "tags": ["🏛️ Di tích Điện Biên Phủ", "🌿 Thung lũng Mường Thanh", "🎋 Văn hóa dân tộc Thái", "🏔️ Thiên nhiên Tây Bắc"],
+        "sample_places": [
+            {
+                "id": "places/db_chien_truong",
+                "name": "Bảo Tàng Chiến Thắng Điện Biên Phủ",
+                "address": "Mường Thanh, TP. Điện Biên Phủ, Điện Biên",
+                "latitude": 21.3845,
+                "longitude": 103.0219,
+                "rating": 4.5,
+                "user_rating_count": 6700,
+                "category": "attraction",
+            },
+        ],
+    },
+    "Sơn La": {
+        "id": "sonla",
+        "name": "Sơn La",
+        "province": "Sơn La",
+        "latitude": 21.3273,
+        "longitude": 103.9144,
+        "tags": ["🌊 Hồ Sông Đà", "☕ Cà phê Arabica Sơn La", "🍑 Cao nguyên Mộc Châu", "🌿 Mận & Chè shan tuyết"],
+        "sample_places": [
+            {
+                "id": "places/sl_moc_chau",
+                "name": "Cao Nguyên Mộc Châu",
+                "address": "Mộc Châu, Sơn La",
+                "latitude": 20.8424,
+                "longitude": 104.6779,
+                "rating": 4.6,
+                "user_rating_count": 18900,
+                "category": "attraction",
+            },
+        ],
+    },
+    "Lạng Sơn": {
+        "id": "langson",
+        "name": "Lạng Sơn",
+        "province": "Lạng Sơn",
+        "latitude": 21.8537,
+        "longitude": 106.7614,
+        "tags": ["🏔️ Núi Mẫu Sơn", "🛒 Chợ Đông Kinh", "🍜 Đặc sản Lạng Sơn", "🌿 Động Tam Thanh"],
+        "sample_places": [
+            {
+                "id": "places/ls_mau_son",
+                "name": "Khu Du Lịch Mẫu Sơn",
+                "address": "Mẫu Sơn, Cao Lộc, Lạng Sơn",
+                "latitude": 21.9361,
+                "longitude": 106.9122,
+                "rating": 4.3,
+                "user_rating_count": 6800,
+                "category": "attraction",
+            },
+        ],
+    },
+    "Thái Nguyên": {
+        "id": "thainguyen",
+        "name": "Thái Nguyên",
+        "province": "Thái Nguyên",
+        "latitude": 21.5944,
+        "longitude": 105.8412,
+        "tags": ["☕ Chè Thái Nguyên nổi tiếng", "🏔️ Hồ Núi Cốc", "🌿 ATK Định Hóa", "🏛️ Bảo Tàng Văn Hóa Các Dân Tộc"],
+        "sample_places": [
+            {
+                "id": "places/tn_ho_nui_coc",
+                "name": "Hồ Núi Cốc",
+                "address": "Tân Thái, Đại Từ, Thái Nguyên",
+                "latitude": 21.6456,
+                "longitude": 105.7103,
+                "rating": 4.3,
+                "user_rating_count": 8400,
+                "category": "attraction",
+            },
+        ],
+    },
+    # ─── CENTRAL PROVINCES ────────────────────────────────────────
+    "Quảng Bình": {
+        "id": "quangbinh",
+        "name": "Quảng Bình",
+        "province": "Quảng Bình",
+        "latitude": 17.4686,
+        "longitude": 106.5994,
+        "tags": ["🏔️ Hang Sơn Đoòng - Lớn nhất TG", "🌊 Phong Nha - Kẻ Bàng UNESCO", "🏖️ Biển Nhật Lệ", "🍜 Bánh canh & Bún bò"],
+        "sample_places": [
+            {
+                "id": "places/qb_phong_nha",
+                "name": "Hang Phong Nha",
+                "address": "Sơn Trạch, Bố Trạch, Quảng Bình",
+                "latitude": 17.5951,
+                "longitude": 106.2815,
+                "rating": 4.8,
+                "user_rating_count": 28600,
+                "category": "attraction",
+            },
+            {
+                "id": "places/qb_son_doong",
+                "name": "Hang Sơn Đoòng",
+                "address": "Tân Trạch, Bố Trạch, Quảng Bình",
+                "latitude": 17.4525,
+                "longitude": 106.1817,
+                "rating": 4.9,
+                "user_rating_count": 8400,
+                "category": "attraction",
+            },
+        ],
+    },
+    "Nghệ An": {
+        "id": "nghean",
+        "name": "Vinh - Nghệ An",
+        "province": "Nghệ An",
+        "latitude": 18.6796,
+        "longitude": 105.6813,
+        "tags": ["🏔️ Biển Cửa Lò", "🌿 Vườn QG Pù Mát", "🏛️ Quê Bác Hồ - Kim Liên", "🍜 Đặc sản xứ Nghệ"],
+        "sample_places": [
+            {
+                "id": "places/na_cua_lo",
+                "name": "Bãi Biển Cửa Lò",
+                "address": "Cửa Lò, Nghệ An",
+                "latitude": 18.8148,
+                "longitude": 105.7318,
+                "rating": 4.3,
+                "user_rating_count": 9800,
+                "category": "attraction",
+            },
+        ],
+    },
+    "Thanh Hóa": {
+        "id": "thanhhoa",
+        "name": "Thanh Hóa",
+        "province": "Thanh Hóa",
+        "latitude": 19.8063,
+        "longitude": 105.7852,
+        "tags": ["🏖️ Sầm Sơn & Hải Tiến", "🏯 Thành Nhà Hồ", "🌿 VQG Bến En", "🍜 Ẩm thực xứ Thanh"],
+        "sample_places": [
+            {
+                "id": "places/th_sam_son",
+                "name": "Bãi Biển Sầm Sơn",
+                "address": "Sầm Sơn, Thanh Hóa",
+                "latitude": 19.7346,
+                "longitude": 105.9014,
+                "rating": 4.3,
+                "user_rating_count": 14200,
+                "category": "attraction",
+            },
+        ],
+    },
+    "Quảng Ninh": {
+        "id": "quangninh",
+        "name": "Quảng Ninh",
+        "province": "Quảng Ninh",
+        "latitude": 21.0064,
+        "longitude": 107.2925,
+        "tags": ["🛥️ Vịnh Hạ Long & Bái Tử Long", "⛏️ Di sản than Quảng Ninh", "🏯 Yên Tử", "🍜 Sá sùng & Chả mực"],
+        "sample_places": [
+            {
+                "id": "places/qn_yen_tu",
+                "name": "Khu Di Tích Yên Tử",
+                "address": "Thượng Yên Công, Uông Bí, Quảng Ninh",
+                "latitude": 21.1244,
+                "longitude": 106.7282,
+                "rating": 4.6,
+                "user_rating_count": 17800,
+                "category": "attraction",
+            },
+        ],
+    },
+    # ─── CENTRAL HIGHLANDS ────────────────────────────────────────
+    "Đắk Lắk": {
+        "id": "daklak",
+        "name": "Buôn Ma Thuột - Đắk Lắk",
+        "province": "Đắk Lắk",
+        "latitude": 12.6700,
+        "longitude": 108.0378,
+        "tags": ["☕ Cà phê Buôn Ma Thuột", "🐘 Buôn Đôn - Cưỡi voi", "🌿 VQG Yok Đôn", "🏔️ Thác Dray Nur"],
+        "sample_places": [
+            {
+                "id": "places/dl_buon_don",
+                "name": "Khu Du Lịch Buôn Đôn",
+                "address": "Buôn Đôn, Đắk Lắk",
+                "latitude": 13.0283,
+                "longitude": 107.6878,
+                "rating": 4.2,
+                "user_rating_count": 7600,
+                "category": "attraction",
+            },
+            {
+                "id": "places/dl_dray_nur",
+                "name": "Thác Dray Nur",
+                "address": "Buôn Tua Srah, Cư Kuin, Đắk Lắk",
+                "latitude": 12.5598,
+                "longitude": 108.1045,
+                "rating": 4.4,
+                "user_rating_count": 6200,
+                "category": "attraction",
+            },
+        ],
+    },
+    "Gia Lai": {
+        "id": "gialai",
+        "name": "Pleiku - Gia Lai",
+        "province": "Gia Lai",
+        "latitude": 13.9833,
+        "longitude": 108.0000,
+        "tags": ["🌋 Biển Hồ Pleiku", "☕ Phố núi & Cà phê", "🌿 VQG Kon Ka Kinh", "🍌 Đặc sản Tây Nguyên"],
+        "sample_places": [
+            {
+                "id": "places/gl_bien_ho",
+                "name": "Biển Hồ T'Nưng (Volcano Lake)",
+                "address": "Biển Hồ, Pleiku, Gia Lai",
+                "latitude": 13.9869,
+                "longitude": 107.9938,
+                "rating": 4.4,
+                "user_rating_count": 9200,
+                "category": "attraction",
+            },
+        ],
+    },
+    "Kon Tum": {
+        "id": "kontum",
+        "name": "Kon Tum",
+        "province": "Kon Tum",
+        "latitude": 14.3500,
+        "longitude": 107.9833,
+        "tags": ["⛪ Nhà Thờ Gỗ Kon Tum", "🌿 Làng dân tộc Bahnar", "🏔️ Ngọc Linh", "🌊 Thác Đăk Lung"],
+        "sample_places": [
+            {
+                "id": "places/kt_nha_tho_go",
+                "name": "Nhà Thờ Gỗ Kon Tum",
+                "address": "442 Nguyễn Huệ, Thắng Lợi, Kon Tum",
+                "latitude": 14.3551,
+                "longitude": 107.9906,
+                "rating": 4.6,
+                "user_rating_count": 7900,
+                "category": "attraction",
+            },
+        ],
+    },
+    # ─── SOUTHERN PROVINCES ───────────────────────────────────────
+    "An Giang": {
+        "id": "angiang",
+        "name": "Long Xuyên - An Giang",
+        "province": "An Giang",
+        "latitude": 10.3862,
+        "longitude": 105.4350,
+        "tags": ["🏔️ Núi Sam & Miếu Bà Chúa Xứ", "🌾 Mùa nước nổi đồng bằng", "🍜 Ẩm thực An Giang", "🛶 Chợ nổi"],
+        "sample_places": [
+            {
+                "id": "places/ag_nui_sam",
+                "name": "Núi Sam - Miếu Bà Chúa Xứ",
+                "address": "Núi Sam, Châu Đốc, An Giang",
+                "latitude": 10.6897,
+                "longitude": 105.0937,
+                "rating": 4.5,
+                "user_rating_count": 21000,
+                "category": "attraction",
+            },
+        ],
+    },
+    "Kiên Giang": {
+        "id": "kiengiang",
+        "name": "Rạch Giá - Kiên Giang",
+        "province": "Kiên Giang",
+        "latitude": 10.0125,
+        "longitude": 105.0809,
+        "tags": ["🏝️ Phú Quốc & Quần đảo Nam Du", "🦞 Hải sản Rạch Giá", "🌅 Hoàng hôn biển Tây", "🌿 Rừng U Minh Thượng"],
+        "sample_places": [
+            {
+                "id": "places/kg_nam_du",
+                "name": "Quần Đảo Nam Du",
+                "address": "An Sơn, Kiên Hải, Kiên Giang",
+                "latitude": 9.6848,
+                "longitude": 104.3527,
+                "rating": 4.6,
+                "user_rating_count": 13400,
+                "category": "attraction",
+            },
+        ],
+    },
+    "Tiền Giang": {
+        "id": "tiengiang",
+        "name": "Mỹ Tho - Tiền Giang",
+        "province": "Tiền Giang",
+        "latitude": 10.3600,
+        "longitude": 106.3600,
+        "tags": ["🛶 Cồn Thới Sơn", "🐍 Trang trại rắn", "🍌 Vườn trái cây miền Tây", "🌊 Sông nước Tiền Giang"],
+        "sample_places": [
+            {
+                "id": "places/tg_con_thoi_son",
+                "name": "Cồn Thới Sơn",
+                "address": "Thới Sơn, Mỹ Tho, Tiền Giang",
+                "latitude": 10.3368,
+                "longitude": 106.3773,
+                "rating": 4.3,
+                "user_rating_count": 12000,
+                "category": "attraction",
+            },
+        ],
+    },
 }
 
 
 def _strip_accents(text: str) -> str:
     """Remove Vietnamese diacritics for flexible fuzzy matching."""
     import unicodedata
-    nfkd = unicodedata.normalize('NFKD', text)
-    return "".join([c for c in nfkd if not unicodedata.combining(c)]).replace('đ', 'd').replace('Đ', 'D').lower()
+    nfkd = unicodedata.normalize("NFKD", text)
+    return (
+        "".join([c for c in nfkd if not unicodedata.combining(c)])
+        .replace("đ", "d")
+        .replace("Đ", "D")
+        .lower()
+    )
 
 
 def get_destination_info(name: str) -> Optional[Dict[str, Any]]:
-    """Lookup destination info case-insensitively and accent-insensitively."""
+    """Lookup destination info case-insensitively and accent-insensitively (fuzzy Unicode match)."""
     target = name.strip().lower()
     target_clean = _strip_accents(target)
 
@@ -365,16 +1079,20 @@ def get_destination_info(name: str) -> Optional[Dict[str, Any]]:
             return data
         if target_clean in key_clean or key_clean in target_clean:
             return data
+        # Also check province fuzzy match
+        prov_clean = _strip_accents(data.get("province", ""))
+        if target_clean == prov_clean or (len(target_clean) > 3 and target_clean in prov_clean):
+            return data
     return None
 
 
 def list_destinations() -> List[Dict[str, Any]]:
-    """Return list of supported destination summaries."""
+    """Return list of all supported Vietnam destination summaries."""
     return [
         {
             "id": v["id"],
             "name": v["name"],
-            "country": v["country"],
+            "province": v.get("province", "Vietnam"),
             "latitude": v["latitude"],
             "longitude": v["longitude"],
             "tags": v["tags"],
