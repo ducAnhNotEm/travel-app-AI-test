@@ -122,15 +122,200 @@ travel-itinerary-bot/
 └── setup.py            # Package setup with entry points
 ```
 
-## Author
+## 🌟 TripMate Foundation & Extensions
 
-**Nrk Raju Guthikonda**
-Senior Software Engineer @ Microsoft — Copilot Search Infrastructure
+This repository serves as the AI travel-planning foundation for **TripMate** — a collaborative university group travel planner.
 
-- GitHub: [kennedyraju55](https://github.com/kennedyraju55)
-- Dev.to: [kennedyraju55](https://dev.to/kennedyraju55)
-- LinkedIn: [nrk-raju-guthikonda](https://linkedin.com/in/nrk-raju-guthikonda-504066a8/)
+### TripMate Architecture
+
+```
+                      +-----------------------------+
+                      |     Frontend (Streamlit)    |
+                      |   or External React/Vue App |
+                      +--------------+--------------+
+                                     |
+                                     v
+                      +-----------------------------+
+                      |     Backend / FastAPI API   |
+                      +--------------+--------------+
+                                     |
+              +----------------------+----------------------+
+              |                      |                      |
+              v                      v                      v
+     +-----------------+    +-----------------+    +-----------------+
+     | AI Planner      |    |  Budget Engine  |    | Temporary Trip  |
+     | (Intent Extract)|    | (Deterministic) |    | Fund Manager    |
+     +--------+--------+    +--------+--------+    +-----------------+
+              |                      |                      ^
+              v                      |                      |
+     +-----------------+             |              (Fundraising ->
+     | Google Places   |             |               Fully Funded ->
+     | API (New)       |             |               Confirmed)
+     +--------+--------+             |
+              |                      |
+              v                      v
+     +-----------------+    +-----------------+
+     | Real Places     |--->| Authoritative   |
+     | Verified        |    | Financial Plan  |
+     +-----------------+    +-----------------+
+```
+
+### Core TripMate Additions
+1. **Google Places API (New)**: `src/travel_planner/places.py`
+   - Text Search (`/places:searchText`)
+   - Nearby Search (`/places:searchNearby`)
+   - Place Details (`/places/{placeId}`)
+   - Field masks used to minimize quota and avoid wildcards.
+   - Fallback adapter for Geoapify API.
+2. **AI Intent Extraction & Anti-Hallucination**: `src/travel_planner/ai_planner.py`
+   - Maps natural-language user prompt to structured JSON search queries.
+   - AI is strictly constrained to recommend only real places returned by Google Places.
+3. **Deterministic Budget Engine**: `src/travel_planner/budget.py`
+   - Authoritative backend arithmetic (the LLM is never the source of truth for calculations).
+   - Generates breakdown for accommodation, food, transportation, activities, reserve buffer (10%), total, and per person.
+4. **Temporary Trip Fund**: `src/travel_planner/fund.py`
+   - Lifecycle: `DRAFT` → `FUNDRAISING` → `FULLY_FUNDED` → `CONFIRMED`.
+   - Member contribution tracking. Auto-transitions to `FULLY_FUNDED` when `total_contributed >= target_amount`.
 
 ---
 
-<p align="center">Built with Gemma 4 — part of a 90+ local LLM project portfolio</p>
+## Quick Start & Setup
+
+### 1. Install Dependencies
+
+```bash
+git clone https://github.com/kennedyraju55/travel-itinerary-bot.git
+cd travel-itinerary-bot
+
+# Install requirements + API server dependencies
+pip install -r requirements.txt fastapi uvicorn
+```
+
+### 2. Configure Environment Variables
+
+Create or update your `.env` file:
+
+```bash
+# Model Settings (Ollama / Gemma 4)
+OLLAMA_BASE_URL=http://localhost:11434
+DEFAULT_MODEL=gemma4
+
+# Google Maps Platform (Places API New)
+GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
+
+# Optional: Geoapify API Key fallback
+GEOAPIFY_API_KEY=your_geoapify_api_key_here
+```
+
+### 3. Google Cloud Platform Setup
+
+To use Google Places API (New):
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
+2. Select or create your project.
+3. In **APIs & Services > Library**, search for and enable:
+   - **Places API (New)**
+   - (Optional) **Geocoding API**
+4. In **APIs & Services > Credentials**, create an API key.
+5. (Recommended) Restrict the API key to "Places API (New)".
+6. Set `GOOGLE_MAPS_API_KEY=your_key` in your environment or `.env`.
+
+### 4. Run the Application
+
+#### Streamlit Web UI (Recommended for visual experience)
+```bash
+streamlit run src/travel_planner/web_ui.py
+# Access at: http://localhost:8501
+```
+
+#### FastAPI Backend (REST endpoints)
+```bash
+python -m uvicorn src.travel_planner.api:app --reload --port 8004
+# API Documentation (Swagger): http://localhost:8004/docs
+```
+
+#### CLI
+```bash
+python -m travel_planner.cli --destination "Da Nang" --days 3 --budget moderate --travelers 4
+```
+
+#### Run All Tests
+```bash
+python -m pytest
+```
+
+---
+
+## Example API Requests & Responses
+
+### 1. Full TripMate AI Plan
+**POST** `/tripmate/plan`
+```json
+{
+  "prompt": "Plan a 3-day trip to Da Nang for 4 people. Find restaurants and attractions and estimate the budget."
+}
+```
+**Response Preview**:
+```json
+{
+  "status": "success",
+  "plan": {
+    "intent": {
+      "destination": "Da Nang",
+      "days": 3,
+      "travelers": 4,
+      "transportation": "car",
+      "tier": "moderate"
+    },
+    "places": [
+      {
+        "id": "places/ChIJ...",
+        "name": "Dragon Bridge (Cầu Rồng)",
+        "address": "An Hải Tây, Sơn Trà, Đà Nẵng",
+        "rating": 4.7
+      }
+    ],
+    "itinerary": "# 🗺️ Da Nang — 3-Day Trip Plan...",
+    "budget": {
+      "transportation": 1050000.0,
+      "accommodation": 3200000.0,
+      "food": 5400000.0,
+      "activities": 1800000.0,
+      "reserve": 1145000.0,
+      "total": 12595000.0,
+      "per_person": 3149000.0
+    }
+  }
+}
+```
+
+### 2. Temporary Fund Contribution
+**POST** `/tripmate/fund/danang-2026/contribute`
+```json
+{
+  "member_name": "Anh",
+  "amount": 3149000
+}
+```
+**Response**:
+```json
+{
+  "status": "success",
+  "fund": {
+    "trip_id": "danang-2026",
+    "target_amount": 12595000.0,
+    "total_contributed": 3149000.0,
+    "progress_percent": 25.0,
+    "status": "FUNDRAISING",
+    "members": [
+      {"name": "Anh", "target": 3149000.0, "paid": 3149000.0, "status": "paid"}
+    ]
+  }
+}
+```
+
+---
+
+## Author & Project Credit
+
+- Original Bot Author: **Nrk Raju Guthikonda**
+- TripMate University Project Extension: TripMate Foundation Integration
