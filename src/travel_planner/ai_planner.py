@@ -95,27 +95,35 @@ def _heuristic_extract(text: str) -> Dict[str, Any]:
     """Deterministic fallback parser for common travel phrases."""
     text_lower = text.lower()
 
-    # Destination detection
+    # Destination detection from catalog or common names
+    from .destinations import DESTINATIONS_CATALOG, get_destination_info
+
     destination = "Da Nang"
     dest_candidates = [
-        "da nang", "hanoi", "ha noi", "ho chi minh", "saigon", "hoi an",
-        "nha trang", "phu quoc", "dalat", "da lat", "hue", "tokyo", "kyoto",
-        "bangkok", "paris", "rome", "london", "singapore", "bali"
+        "đà nẵng", "da nang", "hà nội", "ha noi", "hanoi", "tp. hồ chí minh", "hồ chí minh", "ho chi minh", "sài gòn", "saigon",
+        "phú quốc", "phu quoc", "hội an", "hoi an", "nha trang", "đà lạt", "da lat", "dalat", "huế", "hue",
+        "sa pa", "sapa", "quy nhơn", "quy nhon", "tokyo", "kyoto", "bangkok", "paris", "rome", "london", "singapore", "bali"
     ]
     for candidate in dest_candidates:
         if candidate in text_lower:
-            destination = candidate.title()
+            # If prompt has the exact accented letters, use catalog; if user typed plain ASCII, preserve plain or catalog
+            info = get_destination_info(candidate)
+            if any(accent_char in candidate for accent_char in "àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ"):
+                destination = info["name"] if info else candidate.title()
+            else:
+                # User typed unaccented (e.g. 'Da Nang', 'Phu Quoc', 'Tokyo')
+                destination = candidate.title()
             break
 
-    # Days detection (e.g. '3-day', '3 days', '5 days')
+    # Days detection (e.g. '3-day', '3 days', '5 days', '4 ngày', '3 ngày 2 đêm')
     days = 3
-    days_match = re.search(r"(\d+)\s*(?:-| )*(?:day|days|d\b)", text_lower)
+    days_match = re.search(r"(\d+)\s*(?:-| )*(?:day|days|d\b|ngày|ngay)", text_lower)
     if days_match:
         days = int(days_match.group(1))
 
-    # Travelers / people detection (e.g. 'for 4 people', '4 travelers', '4 pax')
+    # Travelers / people detection (e.g. 'for 4 people', '4 travelers', '4 pax', '2 người', 'đoàn 6 người')
     travelers = 1
-    pax_match = re.search(r"(?:for\s+)?(\d+)\s*(?:people|travelers|members|pax|persons|guests)", text_lower)
+    pax_match = re.search(r"(?:for\s+|cho\s+|đoàn\s+)?(\d+)\s*(?:people|travelers|members|pax|persons|guests|người|nguoi|thành viên|thanh vien|khách|khach)", text_lower)
     if pax_match:
         travelers = int(pax_match.group(1))
 
@@ -148,16 +156,26 @@ def _heuristic_extract(text: str) -> Dict[str, Any]:
     elif "public" in text_lower or "bus" in text_lower or "xe buýt" in text_lower:
         transportation = "public"
 
-    # Search queries for real places
+    # Search queries for real places (dynamically customized for destination)
     places_queries = []
+    
+    # Specific location landmark check in query
+    landmark_query = None
+    if "dragon bridge" in text_lower or "cầu rồng" in text_lower:
+        landmark_query = "near Dragon Bridge"
+    elif "hoan kiem" in text_lower or "hồ gươm" in text_lower:
+        landmark_query = "near Hoan Kiem Lake"
+    elif "ben thanh" in text_lower or "bến thành" in text_lower:
+        landmark_query = "near Ben Thanh Market"
+
     if "dinner" in text_lower or "restaurant" in text_lower or "food" in text_lower or "ăn" in text_lower:
-        if "dragon bridge" in text_lower or "cầu rồng" in text_lower:
-            places_queries.append({"category": "restaurant", "query": f"restaurants near Dragon Bridge {destination}"})
+        if landmark_query:
+            places_queries.append({"category": "restaurant", "query": f"restaurants {landmark_query} {destination}"})
         else:
-            places_queries.append({"category": "restaurant", "query": f"best restaurants in {destination}"})
+            places_queries.append({"category": "restaurant", "query": f"best local restaurants in {destination}"})
 
     if "attraction" in text_lower or "sightseeing" in text_lower or "tourist" in text_lower or "tham quan" in text_lower or not places_queries:
-        places_queries.append({"category": "attraction", "query": f"top attractions in {destination}"})
+        places_queries.append({"category": "attraction", "query": f"top attractions and landmarks in {destination}"})
 
     if "hotel" in text_lower or "stay" in text_lower or "accommodation" in text_lower:
         places_queries.append({"category": "hotel", "query": f"hotels in {destination}"})
@@ -363,67 +381,20 @@ class AITravelPlanner:
         return "\n".join(lines)
 
     def _get_dev_sample_places(self, destination: str, category: str) -> List[Dict[str, Any]]:
-        """Known verified places for Da Nang or general city for development fallback."""
-        if "da nang" in destination.lower():
-            if category == "restaurant":
-                return [
-                    {
-                        "id": "places/ChIJN1t_tDeuQjERe8x5mY_danny",
-                        "name": "Madame Lan Restaurant",
-                        "address": "04 Bạch Đằng, Thạch Thang, Hải Châu, Đà Nẵng",
-                        "latitude": 16.0827,
-                        "longitude": 108.2238,
-                        "rating": 4.4,
-                        "user_rating_count": 3840,
-                        "price_level": "PRICE_LEVEL_MODERATE",
-                        "google_maps_uri": "https://maps.google.com/?cid=123456",
-                        "category": "restaurant"
-                    },
-                    {
-                        "id": "places/ChIJN2t_tDeuQjERe8x5mY_bep",
-                        "name": "Bếp Cuốn Đà Nẵng (Near Dragon Bridge)",
-                        "address": "54 Nguyễn Văn Thoại, Bắc Mỹ Phú, Ngũ Hành Sơn, Đà Nẵng",
-                        "latitude": 16.0592,
-                        "longitude": 108.2415,
-                        "rating": 4.8,
-                        "user_rating_count": 2100,
-                        "price_level": "PRICE_LEVEL_INEXPENSIVE",
-                        "google_maps_uri": "https://maps.google.com/?cid=789012",
-                        "category": "restaurant"
-                    }
-                ]
-            else:
-                return [
-                    {
-                        "id": "places/ChIJX6r_tDeuQjERe8x5mY_dragon",
-                        "name": "Dragon Bridge (Cầu Rồng)",
-                        "address": "An Hải Tây, Sơn Trà, Đà Nẵng",
-                        "latitude": 16.0611,
-                        "longitude": 108.2272,
-                        "rating": 4.7,
-                        "user_rating_count": 14200,
-                        "price_level": "FREE",
-                        "google_maps_uri": "https://maps.google.com/?cid=112233",
-                        "category": "attraction"
-                    },
-                    {
-                        "id": "places/ChIJY7r_tDeuQjERe8x5mY_marble",
-                        "name": "Marble Mountains (Ngũ Hành Sơn)",
-                        "address": "81 Huyền Trân Công Chúa, Hoà Hải, Ngũ Hành Sơn, Đà Nẵng",
-                        "latitude": 16.0041,
-                        "longitude": 108.2635,
-                        "rating": 4.6,
-                        "user_rating_count": 12500,
-                        "price_level": "PRICE_LEVEL_INEXPENSIVE",
-                        "google_maps_uri": "https://maps.google.com/?cid=445566",
-                        "category": "attraction"
-                    }
-                ]
-        # Generic fallback
+        """Return curated sample places from catalog or general city fallback for offline/development."""
+        from .destinations import get_destination_info
+        info = get_destination_info(destination)
+        if info and "sample_places" in info:
+            matched = [p for p in info["sample_places"] if p.get("category") == category]
+            if matched:
+                return matched
+            return info["sample_places"][:2]
+
+        # Generic city fallback
         return [
             {
-                "id": f"places/{destination.lower()}_central_spot",
-                "name": f"{destination} City Center & Square",
+                "id": f"places/{destination.lower()[:8]}_central_spot",
+                "name": f"{destination} Central Cultural Square",
                 "address": f"Center, {destination}",
                 "latitude": 21.0285,
                 "longitude": 105.8542,

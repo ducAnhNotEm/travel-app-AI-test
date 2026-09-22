@@ -247,7 +247,15 @@ async def get_details(place_id: str):
         raise HTTPException(status_code=e.status_code or 400, detail=e.message)
 
 
+from src.travel_planner.destinations import list_destinations, get_destination_info
+
 # ── TripMate AI Planner & Intent (Phase 4 & 5) ──
+
+@app.get("/tripmate/destinations")
+async def get_supported_destinations():
+    """Retrieve curated list of popular travel destinations with GPS coordinates and tags."""
+    return {"destinations": list_destinations(), "status": "success"}
+
 
 @app.post("/tripmate/parse-intent")
 async def parse_intent(req: TripMatePlanRequest):

@@ -34,32 +34,32 @@
   },
   {
     "trip_id": "danang-2026",
-    "target_amount": 5390000.0,
-    "total_contributed": 0.0,
-    "progress_percent": 0.0,
+    "target_amount": 72270000.0,
+    "total_contributed": 18067500.0,
+    "progress_percent": 25.0,
     "status": "FUNDRAISING",
     "members": [
       {
-        "name": "Anh",
-        "target": 1347500.0,
+        "name": "Thành viên 1",
+        "target": 18067500.0,
         "paid": 0.0,
         "status": "pending"
       },
       {
-        "name": "Minh",
-        "target": 1347500.0,
+        "name": "Thành viên 2",
+        "target": 18067500.0,
         "paid": 0.0,
         "status": "pending"
       },
       {
-        "name": "Lan",
-        "target": 1347500.0,
-        "paid": 0.0,
-        "status": "pending"
+        "name": "Thành viên 3",
+        "target": 18067500.0,
+        "paid": 18067500.0,
+        "status": "paid"
       },
       {
-        "name": "Hung",
-        "target": 1347500.0,
+        "name": "Thành viên 4",
+        "target": 18067500.0,
         "paid": 0.0,
         "status": "pending"
       }

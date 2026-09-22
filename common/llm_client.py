@@ -6,7 +6,10 @@ Shared across all 90 projects for consistent LLM interaction.
 import requests
 import json
 import sys
+import logging
 from typing import Optional, Generator
+
+logger = logging.getLogger(__name__)
 
 
 OLLAMA_BASE_URL = "http://localhost:11434"
@@ -30,6 +33,11 @@ def list_models() -> list:
         return [m["name"] for m in data.get("models", [])]
     except Exception:
         return []
+
+
+class OllamaConnectionError(Exception):
+    """Exception raised when connection to Ollama server fails."""
+    pass
 
 
 def chat(
@@ -73,12 +81,12 @@ def chat(
         )
         resp.raise_for_status()
         return resp.json()["message"]["content"]
-    except requests.exceptions.ConnectionError:
-        print("Error: Ollama is not running. Start it with: ollama serve")
-        sys.exit(1)
+    except requests.exceptions.ConnectionError as e:
+        logger.warning("Ollama is not running at %s. Returning fallback or raising.", OLLAMA_BASE_URL)
+        raise OllamaConnectionError("Ollama is not running. Start it with: ollama serve") from e
     except Exception as e:
-        print(f"Error communicating with Ollama: {e}")
-        sys.exit(1)
+        logger.error(f"Error communicating with Ollama: {e}")
+        raise OllamaConnectionError(f"Error communicating with Ollama: {e}") from e
 
 
 def chat_stream(
@@ -123,9 +131,9 @@ def chat_stream(
                     yield token
                 if data.get("done", False):
                     break
-    except requests.exceptions.ConnectionError:
-        print("Error: Ollama is not running. Start it with: ollama serve")
-        sys.exit(1)
+    except requests.exceptions.ConnectionError as e:
+        logger.warning("Ollama is not running. Streaming aborted.")
+        raise OllamaConnectionError("Ollama is not running. Start it with: ollama serve") from e
 
 
 def generate(
@@ -168,12 +176,12 @@ def generate(
         )
         resp.raise_for_status()
         return resp.json()["response"]
-    except requests.exceptions.ConnectionError:
-        print("Error: Ollama is not running. Start it with: ollama serve")
-        sys.exit(1)
+    except requests.exceptions.ConnectionError as e:
+        logger.warning("Ollama is not running for generate.")
+        raise OllamaConnectionError("Ollama is not running. Start it with: ollama serve") from e
     except Exception as e:
-        print(f"Error: {e}")
-        sys.exit(1)
+        logger.error(f"Error generating from Ollama: {e}")
+        raise OllamaConnectionError(f"Error: {e}") from e
 
 
 def embed(text: str, model: str = DEFAULT_MODEL) -> list[float]:

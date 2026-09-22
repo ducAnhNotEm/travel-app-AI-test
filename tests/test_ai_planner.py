@@ -88,3 +88,29 @@ class TestAITravelPlanner:
             + result["budget"]["activities"]
             + result["budget"]["reserve"]
         )
+
+    def test_dynamic_destination_extraction_hanoi(self):
+        prompt = "Du lịch Hà Nội 4 ngày cho 2 người, thích ăn bún chả và ghé Hồ Gươm, ngân sách 5 triệu đồng"
+        intent = extract_travel_intent(prompt)
+
+        assert intent["destination"] == "Hà Nội"
+        assert intent["days"] == 4
+        assert intent["travelers"] == 2
+        assert intent["budget_vnd"] == 5_000_000.0
+
+    def test_dynamic_destination_extraction_phu_quoc(self):
+        prompt = "Plan a 5-day luxury trip to Phu Quoc for 6 people by flight"
+        intent = extract_travel_intent(prompt)
+
+        assert intent["destination"] in ("Phu Quoc", "Phú Quốc")
+        assert intent["days"] == 5
+        assert intent["travelers"] == 6
+        assert intent["tier"] == "luxury"
+        assert intent["transportation"] == "flight"
+
+    def test_catalog_sample_places_fallback(self):
+        planner = AITravelPlanner()
+        # Test Hanoi fallback
+        hn_places = planner._get_dev_sample_places("Hà Nội", "restaurant")
+        assert len(hn_places) > 0
+        assert any("Hà Nội" in p.get("address", "") or "Hanoi" in p.get("address", "") for p in hn_places)

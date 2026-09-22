@@ -94,3 +94,15 @@ class TestBudgetParsing:
 
     def test_empty_text(self):
         assert parse_budget_items("no numbers here") == []
+
+
+class TestLLMClientResilience:
+    @patch("requests.post")
+    def test_chat_raises_ollama_connection_error_without_exit(self, mock_post):
+        import requests
+        from common.llm_client import chat, OllamaConnectionError
+        mock_post.side_effect = requests.exceptions.ConnectionError("Connection refused")
+        
+        with pytest.raises(OllamaConnectionError):
+            chat([{"role": "user", "content": "hi"}])
+
