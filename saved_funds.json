@@ -187,5 +187,95 @@
         "status": "pending"
       }
     ]
+  },
+  {
+    "trip_id": "cao-b-ng-2026",
+    "target_amount": 44946000.0,
+    "total_contributed": 0.0,
+    "progress_percent": 0.0,
+    "status": "FUNDRAISING",
+    "members": [
+      {
+        "name": "Thành viên 1",
+        "target": 7491000.0,
+        "paid": 0.0,
+        "status": "pending"
+      },
+      {
+        "name": "Thành viên 2",
+        "target": 7491000.0,
+        "paid": 0.0,
+        "status": "pending"
+      },
+      {
+        "name": "Thành viên 3",
+        "target": 7491000.0,
+        "paid": 0.0,
+        "status": "pending"
+      },
+      {
+        "name": "Thành viên 4",
+        "target": 7491000.0,
+        "paid": 0.0,
+        "status": "pending"
+      },
+      {
+        "name": "Thành viên 5",
+        "target": 7491000.0,
+        "paid": 0.0,
+        "status": "pending"
+      },
+      {
+        "name": "Thành viên 6",
+        "target": 7491000.0,
+        "paid": 0.0,
+        "status": "pending"
+      }
+    ]
+  },
+  {
+    "trip_id": "s-n-la-2026",
+    "target_amount": 22440000.0,
+    "total_contributed": 0.0,
+    "progress_percent": 0.0,
+    "status": "FUNDRAISING",
+    "members": [
+      {
+        "name": "Thành viên 1",
+        "target": 3740000.0,
+        "paid": 0.0,
+        "status": "pending"
+      },
+      {
+        "name": "Thành viên 2",
+        "target": 3740000.0,
+        "paid": 0.0,
+        "status": "pending"
+      },
+      {
+        "name": "Thành viên 3",
+        "target": 3740000.0,
+        "paid": 0.0,
+        "status": "pending"
+      },
+      {
+        "name": "Thành viên 4",
+        "target": 3740000.0,
+        "paid": 0.0,
+        "status": "pending"
+      },
+      {
+        "name": "Thành viên 5",
+        "target": 3740000.0,
+        "paid": 0.0,
+        "status": "pending"
+      },
+      {
+        "name": "Thành viên 6",
+        "target": 3740000.0,
+        "paid": 0.0,
+        "status": "pending"
+      }
+    ]
   }
 ]

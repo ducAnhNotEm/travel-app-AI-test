@@ -1,4 +1,4 @@
-"""Streamlit web interface for TripMate — Collaborative Group Travel Planner."""
+"""Streamlit web interface for TripMate 2.0 — Hybrid AI Travel Planner."""
 
 import sys
 from pathlib import Path
@@ -22,6 +22,7 @@ from src.travel_planner.places import PlacesService, PlacesAPIError
 from src.travel_planner.ai_planner import AITravelPlanner, extract_travel_intent
 from src.travel_planner.budget import calculate_budget
 from src.travel_planner.fund import fund_manager, STATUS_FULLY_FUNDED, STATUS_CONFIRMED
+from src.travel_planner.models import NormalizedPlace, ItemType, PlaceStatus
 
 # Page configuration
 st.set_page_config(
@@ -83,6 +84,35 @@ st.markdown("""
     .badge-yellow { background-color: #FEF9E7; color: #B78103; }
     .badge-red { background-color: #FFEBEE; color: #C62828; }
     
+    /* Verified / Unverified badges */
+    .badge-verified {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 12px;
+        background-color: #E8F5E9;
+        color: #2E7D32;
+        font-size: 0.78rem;
+        font-weight: 600;
+    }
+    .badge-unverified {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 12px;
+        background-color: #FFF8E1;
+        color: #F57F17;
+        font-size: 0.78rem;
+        font-weight: 600;
+    }
+    .badge-transit {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 12px;
+        background-color: #E3F2FD;
+        color: #1565C0;
+        font-size: 0.78rem;
+        font-weight: 600;
+    }
+    
     /* Buttons */
     .stButton>button {
         background-color: #C62828;
@@ -128,6 +158,7 @@ def init_state():
     defaults = {
         "config": load_config(),
         "plan_result": None,
+        "hybrid_result": None,
         "active_trip_id": None,
         "trip_name": "",
         "destination": first_dest_key,
@@ -135,6 +166,10 @@ def init_state():
         "days": 3,
         "fund": None,
         "places_service": PlacesService(),
+        # Multi-destination
+        "multi_destinations": [],
+        # Pinned places from UI explorer
+        "pinned_places": [],
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -147,15 +182,17 @@ def main():
     setup_logging(cfg)
 
     # Top Brand Bar
-    st.markdown('<div class="brand-title">TripMate</div>', unsafe_allow_html=True)
-    st.markdown('<div class="brand-sub">Collaborative Group Travel Planner with AI & Google Places API</div>', unsafe_allow_html=True)
+    st.markdown('<div class="brand-title">TripMate 2.0</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="brand-sub">Hybrid AI Travel Planner — Google Places · Deterministic Scheduling · Anti-Hallucination</div>',
+        unsafe_allow_html=True,
+    )
 
     # Sidebar: Trip Settings & Keys
     with st.sidebar:
         st.markdown("### ⚙️ TripMate Settings")
         st.caption("Google Places & AI Configuration")
-        
-        # Check API key status
+
         import os
         has_google_key = bool(os.environ.get("GOOGLE_MAPS_API_KEY") or os.environ.get("GOOGLE_PLACES_API_KEY"))
         has_geoapify_key = bool(os.environ.get("GEOAPIFY_API_KEY"))
@@ -184,7 +221,15 @@ def main():
         st.text(f"Trip ID: {st.session_state.active_trip_id or 'Chưa tạo chuyến đi'}")
         st.text(f"Tên chuyến: {st.session_state.trip_name or 'Chưa đặt tên'}")
 
-    # Tabs for TripMate Flow: 3 streamlined, highly interactive SaaS tabs
+        # Pinned places count
+        pinned = st.session_state.pinned_places
+        if pinned:
+            st.markdown(f"📌 **{len(pinned)} địa điểm đã ghim**")
+            if st.button("🗑️ Xoá tất cả địa điểm ghim"):
+                st.session_state.pinned_places = []
+                st.rerun()
+
+    # Main tabs
     tab_planner, tab_places, tab_fund = st.tabs([
         "🚀 AI Trip Planner",
         "📍 Google Places Explorer",
@@ -203,153 +248,250 @@ def main():
 
         with col_input:
             st.markdown("#### 1. Chọn điểm đến & Cấu hình chuyến đi")
-            col_t1, col_t2 = st.columns([1, 1])
-            selected_dest_key = col_t1.selectbox(
-                "Điểm đến (Thành phố):",
+
+            # ── Multi-destination builder ──────────────────────
+            st.markdown("**Thêm nhiều điểm đến (Multi-destination):**")
+            md_col1, md_col2, md_col3 = st.columns([3, 1, 1])
+            new_dest_key = md_col1.selectbox(
+                "Thêm điểm đến:",
                 dest_options,
                 index=0,
-                help="Chọn nhanh từ danh sách điểm đến hàng đầu hoặc tự nhập"
+                key="new_dest_select",
             )
-            
-            if selected_dest_key == "Other (Custom Destination)...":
-                active_dest = col_t2.text_input("Nhập tên điểm đến:", value="Hạ Long")
-                dest_tags = ["🍴 Ẩm thực", "🏖️ Ngắm cảnh", "📸 Check-in", "☕ Cafe"]
-            else:
-                dest_info = DESTINATIONS_CATALOG[selected_dest_key]
-                active_dest = dest_info["name"]
-                dest_tags = dest_info.get("tags", [])
-                col_t2.text_input(
-                    "Tỉnh / Thành phố:",
-                    value=dest_info.get("province", "Việt Nam"),
-                    disabled=True,
-                )
+            new_dest_days = md_col2.number_input("Số ngày:", min_value=1, max_value=14, value=2, key="new_dest_days")
 
+            if md_col3.button("➕ Thêm"):
+                if new_dest_key == "Other (Custom Destination)...":
+                    st.warning("Vui lòng chọn điểm đến từ danh sách.")
+                else:
+                    existing = [d["name"] for d in st.session_state.multi_destinations]
+                    dest_info = DESTINATIONS_CATALOG[new_dest_key]
+                    if dest_info["name"] not in existing:
+                        st.session_state.multi_destinations.append({
+                            "name": dest_info["name"],
+                            "days": int(new_dest_days),
+                            "order": len(st.session_state.multi_destinations) + 1,
+                        })
+                        st.rerun()
+
+            # Show multi-destination list
+            if st.session_state.multi_destinations:
+                st.markdown("**Hành trình đã chọn:**")
+                for idx, d in enumerate(st.session_state.multi_destinations):
+                    dc1, dc2, dc3 = st.columns([4, 1, 1])
+                    dc1.write(f"📍 **{d['name']}** — {d['days']} ngày")
+                    if dc3.button("❌", key=f"rm_dest_{idx}"):
+                        st.session_state.multi_destinations.pop(idx)
+                        # Re-number orders
+                        for i, item in enumerate(st.session_state.multi_destinations):
+                            item["order"] = i + 1
+                        st.rerun()
+            else:
+                st.info("Chưa có điểm đến nào. Thêm ít nhất 1 điểm đến để tiếp tục.")
+
+            st.markdown("---")
+
+            # ── Traveler / style settings ──────────────────────
             col_d1, col_d2 = st.columns(2)
-            travelers_count = col_d1.slider("Số lượng thành viên (Travelers):", min_value=1, max_value=20, value=4)
-            days_count = col_d2.slider("Thời gian chuyến đi (Số ngày):", min_value=1, max_value=14, value=3)
+            travelers_count = col_d1.slider("Số lượng thành viên:", min_value=1, max_value=20, value=4)
+
+            # Computed total days
+            total_days_computed = sum(d["days"] for d in st.session_state.multi_destinations) or 3
 
             col_s1, col_s2 = st.columns(2)
             tier_choice = col_s1.radio(
                 "Phân khúc ngân sách:",
                 ["budget", "moderate", "luxury"],
                 index=1,
-                format_func=lambda x: {"budget": "Tiết kiệm 💸 (Budget)", "moderate": "Tiêu chuẩn ⚖️ (Moderate)", "luxury": "Cao cấp 💎 (Luxury)"}[x],
-                horizontal=True
+                format_func=lambda x: {
+                    "budget": "Tiết kiệm 💸",
+                    "moderate": "Tiêu chuẩn ⚖️",
+                    "luxury": "Cao cấp 💎",
+                }[x],
+                horizontal=True,
             )
             trans_choice = col_s2.radio(
                 "Phương tiện di chuyển:",
                 ["car", "motorcycle", "public", "flight"],
                 index=0,
-                format_func=lambda x: {"car": "🚗 Ô tô / Taxi", "motorcycle": "🛵 Xe máy", "public": "🚌 Xe buýt / Công cộng", "flight": "✈️ Máy bay"}[x],
-                horizontal=True
+                format_func=lambda x: {
+                    "car": "🚗 Ô tô",
+                    "motorcycle": "🛵 Xe máy",
+                    "public": "🚌 Xe buýt",
+                    "flight": "✈️ Máy bay",
+                }[x],
+                horizontal=True,
             )
 
-            # Interactive Tag Chips for User Preferences
-            st.markdown("#### 2. Sở thích & Điểm nhấn mong muốn:")
-            chosen_tags = st.multiselect(
-                "Chọn các chủ đề bạn quan tâm:",
-                options=dest_tags,
-                default=dest_tags[:2] if len(dest_tags) >= 2 else dest_tags,
-                help="AI sẽ dựa vào các thẻ này để lọc và tìm địa điểm phù hợp trên Google Places API"
-            )
+            st.markdown("#### 2. Yêu cầu chi tiết gửi AI:")
+            if st.session_state.multi_destinations:
+                dest_strs = " rồi sang ".join(
+                    f"{d['name']} {d['days']} ngày" for d in st.session_state.multi_destinations
+                )
+                generated_prompt = (
+                    f"Tôi muốn đi {dest_strs} cho {travelers_count} người, "
+                    f"phong cách {tier_choice}, di chuyển bằng {trans_choice}. "
+                    "Tìm nhà hàng ngon và địa điểm tham quan thực tế kèm dự toán chi phí."
+                )
+            else:
+                generated_prompt = (
+                    f"Lập kế hoạch du lịch 3 ngày cho {travelers_count} người, "
+                    f"phong cách {tier_choice}."
+                )
 
-            tag_summary = ", ".join(chosen_tags) if chosen_tags else "thưởng thức ẩm thực và tham quan"
-            generated_prompt = f"Lập kế hoạch du lịch {days_count} ngày tại {active_dest} cho đoàn {travelers_count} người, phong cách {tier_choice}, di chuyển bằng {trans_choice}. Tập trung vào: {tag_summary}. Tìm kiếm địa điểm ăn uống và tham quan thực tế kèm dự toán chi phí chi tiết."
-
-            st.markdown("#### 3. Yêu cầu chi tiết gửi AI:")
             user_prompt = st.text_area(
                 "Prompt mô tả kế hoạch du lịch:",
                 value=generated_prompt,
-                height=95,
-                help="TripMate phân tích prompt, truy vấn Google Places API lấy địa điểm thực tế và tự động tính ngân sách chi tiết."
+                height=110,
+                help="TripMate phân tích prompt, truy vấn Google Places API và tạo lịch trình xác định.",
             )
 
+            # Pinned places summary
+            if st.session_state.pinned_places:
+                st.markdown(f"📌 **{len(st.session_state.pinned_places)} địa điểm đã ghim** sẽ được ưu tiên trong lịch trình.")
+
             if st.button("🚀 Khởi tạo Lịch trình & Ngân sách", type="primary"):
-                planner = AITravelPlanner(places_service=st.session_state.places_service)
-                with st.spinner(f"AI đang phân tích yêu cầu & truy vấn Places API cho {active_dest}..."):
-                    try:
-                        plan_res = planner.generate_full_trip_plan(user_prompt)
-                        st.session_state.plan_result = plan_res
-                        st.session_state.destination = active_dest
-                        st.session_state.travelers = travelers_count
-                        st.session_state.days = days_count
+                if not st.session_state.multi_destinations:
+                    st.error("Vui lòng thêm ít nhất 1 điểm đến trước khi tạo lịch trình.")
+                else:
+                    planner = AITravelPlanner(places_service=st.session_state.places_service)
+                    with st.spinner("AI đang phân tích yêu cầu & truy vấn Places API..."):
+                        try:
+                            pinned = st.session_state.pinned_places
+                            plan_res = planner.generate_hybrid_plan(
+                                user_prompt,
+                                pinned_places=pinned,
+                            )
+                            st.session_state.hybrid_result = plan_res
+                            # Also set legacy plan_result for compatibility
+                            intent_obj = plan_res["intent"]
+                            st.session_state.plan_result = {
+                                "intent": {
+                                    "destination": intent_obj.destinations[0].name if intent_obj.destinations else "",
+                                    "days": intent_obj.total_days,
+                                    "travelers": intent_obj.travelers,
+                                    "transportation": intent_obj.transportation,
+                                    "tier": intent_obj.tier,
+                                    "budget_vnd": intent_obj.budget_vnd,
+                                },
+                                "places": [
+                                    {
+                                        "id": p.id, "name": p.name, "address": p.address,
+                                        "latitude": p.latitude, "longitude": p.longitude,
+                                        "rating": p.rating, "user_rating_count": p.user_rating_count,
+                                        "category": p.category, "google_maps_uri": p.google_maps_uri,
+                                    }
+                                    for p in plan_res["places"]
+                                ],
+                                "itinerary": plan_res["itinerary"],
+                                "budget": plan_res["budget"],
+                            }
+                            st.session_state.travelers = travelers_count
 
-                        # Generate dynamic trip_id from destination name
-                        import re as _re
-                        safe_dest = _re.sub(r"[^a-z0-9]", "-", active_dest.lower())[:16].strip("-")
-                        trip_id = f"{safe_dest}-2026"
-                        st.session_state.active_trip_id = trip_id
-                        st.session_state.trip_name = f"Chuyến du lịch {active_dest}"
+                            import re as _re
+                            primary_name = intent_obj.destinations[0].name if intent_obj.destinations else "trip"
+                            safe_dest = _re.sub(r"[^a-z0-9]", "-", primary_name.lower())[:16].strip("-")
+                            trip_id = f"{safe_dest}-2026"
+                            st.session_state.active_trip_id = trip_id
+                            st.session_state.trip_name = f"Chuyến du lịch {primary_name}"
 
-                        # Sync with Trip Fund target
-                        total_budget = plan_res["budget"]["total"]
-                        fund_manager.create_fund(
-                            trip_id=trip_id,
-                            target_amount=total_budget,
-                            member_names=([f"Thành viên {i+1}" for i in range(travelers_count)] or ["Thành viên 1"])
-                        )
-                        st.session_state.fund = fund_manager.get_fund(trip_id)
-                        st.success(f"✓ Đã tạo thành công lịch trình {active_dest} với địa điểm thật & dự toán ngân sách!")
-                    except Exception as e:
-                        st.error(f"Lỗi khởi tạo lịch trình: {e}")
+                            total_budget = plan_res["budget"]["total"]
+                            fund_manager.create_fund(
+                                trip_id=trip_id,
+                                target_amount=total_budget,
+                                member_names=(
+                                    [f"Thành viên {i+1}" for i in range(travelers_count)]
+                                    or ["Thành viên 1"]
+                                ),
+                            )
+                            st.session_state.fund = fund_manager.get_fund(trip_id)
+                            st.success("✓ Đã tạo thành công lịch trình với địa điểm thật & dự toán ngân sách!")
+                        except Exception as e:
+                            st.error(f"Lỗi khởi tạo lịch trình: {e}")
 
         with col_meta:
-            st.markdown("#### ⚡ Cơ chế Vận hành TripMate")
+            st.markdown("#### ⚡ Kiến trúc Hybrid AI Pipeline")
             st.markdown("""
-            ```mermaid
-            flowchart TD
-            A[Tùy chọn tương tác] --> B[AI Intent Parser]
-            B --> C[Google Places API New]
-            C --> D[Xác thực địa điểm thật]
-            D --> E[Lập lịch trình chi tiết]
-            D --> F[Deterministic Budget Engine]
-            F --> G[Quỹ nhóm Trip Fund]
+            ```
+            User Prompt
+              ↓ Intent Extraction (LLM / Heuristic)
+            TravelIntent
+              ↓ PlaceResolver → Google Places
+            CustomPlace (Verified/Unverified)
+              ↓ PlaceFusionEngine
+            Pinned + Custom + Google
+              ↓ Nearest-Neighbor Optimizer
+            Optimised POI Pool
+              ↓ ConstraintEngine → Slot Assignment
+            ItineraryItem list (PLACE/ACTIVITY/TRANSIT)
+              ↓ Budget Engine + LLM Formatter
+            UI
             ```
             """)
             st.markdown("""
             > [!TIP]
-            > **100% Chống Ảo giác (Anti-Hallucination)**  
-            > Mọi địa điểm, nhà hàng, danh lam thắng cảnh được xác thực trực tiếp qua **Google Places API / Geoapify**.
+            > **Anti-Hallucination**: LLM chỉ được thêm lời bình — không được đổi tên hay bịa địa điểm.
             """)
-            if selected_dest_key != "Other (Custom Destination)...":
-                info = DESTINATIONS_CATALOG[selected_dest_key]
-                st.caption(f"📍 Toạ độ trung tâm: `{info['latitude']}, {info['longitude']}`")
-                st.caption(f"🏠 Tỉnh / Thành phố: **{info.get('province', 'Việt Nam')}**")
 
-        # Display Result
-        if st.session_state.plan_result:
-            plan = st.session_state.plan_result
+        # ── Display Result ─────────────────────────────────────────────
+        if st.session_state.hybrid_result:
+            result = st.session_state.hybrid_result
+            intent_obj = result["intent"]
+            items = result.get("items", [])
+
             st.markdown("---")
-            
-            # Overview Metrics
-            mcol1, mcol2, mcol3, mcol4 = st.columns(4)
-            mcol1.metric("Điểm đến", plan["intent"]["destination"])
-            mcol2.metric("Thời gian / Số người", f"{plan['intent']['days']} Ngày / {plan['intent']['travelers']} Pax")
-            mcol3.metric("Địa điểm xác thực", f"{len(plan['places'])} Địa điểm")
-            mcol4.metric("Dự toán tổng", f"{int(plan['budget']['total']):,} VND")
 
-            # Two columns: Verified Places + Itinerary
+            # Overview Metrics
+            dest_names_str = " → ".join(d.name for d in intent_obj.destinations)
+            mcol1, mcol2, mcol3, mcol4 = st.columns(4)
+            mcol1.metric("Hành trình", dest_names_str[:30])
+            mcol2.metric("Thời gian / Pax", f"{intent_obj.total_days} ngày / {intent_obj.travelers} người")
+            mcol3.metric("Địa điểm xác thực", f"{len(result['places'])}")
+            mcol4.metric("Dự toán tổng", f"{int(result['budget']['total']):,} VND")
+
             col_itin, col_bud = st.columns([3, 2])
 
             with col_itin:
-                st.markdown("### 🗺️ Lịch trình Chi tiết Từng Ngày")
-                st.markdown(plan["itinerary"])
+                # ── Structured itinerary rendering with item-type badges ──
+                st.markdown("### 🗺️ Lịch trình Chi tiết")
 
-                st.markdown("### 📍 Danh sách Địa điểm thật đã xác thực")
-                for p in plan["places"]:
-                    with st.expander(f"📍 {p['name']} ({p.get('category', 'attraction').capitalize()})"):
-                        st.write(f"**Địa chỉ**: {p.get('address', 'Khu vực trung tâm')}")
-                        st.write(f"**Đánh giá**: {p.get('rating', '4.5')} ⭐ ({p.get('user_rating_count', 0)} đánh giá)")
-                        if p.get("google_maps_uri"):
-                            st.markdown(f"[Mở trên Google Maps]({p['google_maps_uri']})")
+                if items:
+                    _render_structured_itinerary(items)
+                else:
+                    st.markdown(result["itinerary"])
+
+                # ── Verified places accordion ─────────────────────────────
+                st.markdown("### 📍 Danh sách Địa điểm Xác thực")
+                for p in result["places"]:
+                    source = p.source if isinstance(p, NormalizedPlace) else "google_places"
+                    icon = "📌" if source == "pinned" else "✅"
+                    with st.expander(f"{icon} {p.name if isinstance(p, NormalizedPlace) else p['name']}"):
+                        if isinstance(p, NormalizedPlace):
+                            st.write(f"**Địa chỉ**: {p.address or 'N/A'}")
+                            st.write(f"**Đánh giá**: {p.rating or 'N/A'} ⭐ ({p.user_rating_count} đánh giá)")
+                            st.write(f"**Loại**: {p.category}")
+                            st.write(f"**Nguồn**: {p.source}")
+                            if p.google_maps_uri:
+                                st.markdown(f"[Mở Google Maps]({p.google_maps_uri})")
+                        else:
+                            st.write(f"**Địa chỉ**: {p.get('address', 'N/A')}")
+                            st.write(f"**Đánh giá**: {p.get('rating', 'N/A')} ⭐")
 
             with col_bud:
                 st.markdown("### 💰 Dự toán Ngân sách Nhóm")
-                b = plan["budget"]
-                
+                b = result["budget"]
                 budget_data = {
-                    "Hạng mục": ["Chỗ ở (Khách sạn/Homestay)", "Ăn uống (Ẩm thực & Nhà hàng)", "Phương tiện di chuyển", "Tham quan & Trải nghiệm", "Dự phòng phát sinh (10%)"],
-                    "Số tiền (VND)": [b["accommodation"], b["food"], b["transportation"], b["activities"], b["reserve"]]
+                    "Hạng mục": [
+                        "Chỗ ở (Khách sạn/Homestay)",
+                        "Ăn uống (Ẩm thực & Nhà hàng)",
+                        "Phương tiện di chuyển",
+                        "Tham quan & Trải nghiệm",
+                        "Dự phòng phát sinh (10%)",
+                    ],
+                    "Số tiền (VND)": [
+                        b["accommodation"], b["food"], b["transportation"],
+                        b["activities"], b["reserve"],
+                    ],
                 }
                 df_b = pd.DataFrame(budget_data)
                 df_b["Số tiền (VND)"] = df_b["Số tiền (VND)"].apply(lambda x: f"{int(x):,} VND")
@@ -357,49 +499,46 @@ def main():
 
                 st.metric("Tổng chi phí chuyến đi", f"{int(b['total']):,} VND")
                 st.metric("Chia bình quân mỗi người", f"{int(b['per_person']):,} VND")
-                st.caption("🔒 Tính toán số học chuẩn xác qua Budget Engine, không phụ thuộc ảo giác LLM.")
+                st.caption("🔒 Tính toán số học chuẩn xác, không phụ thuộc LLM.")
+
+                # Download markdown itinerary
+                st.download_button(
+                    label="📥 Tải lịch trình (Markdown)",
+                    data=result["itinerary"],
+                    file_name="tripmate_itinerary.md",
+                    mime="text/markdown",
+                )
 
     # ─────────────────────────────────────────────────────────────
-    # TAB 2: GOOGLE PLACES EXPLORER
+    # TAB 2: GOOGLE PLACES EXPLORER + PIN
     # ─────────────────────────────────────────────────────────────
     with tab_places:
         st.markdown("### 📍 Khám phá Địa điểm với Places API (New)")
-        st.caption("Tìm kiếm địa điểm du lịch, quán ăn, quán cafe và tìm kiếm theo toạ độ bán kính.")
+        st.caption("Tìm kiếm địa điểm và nhấn 📌 Ghim để ưu tiên chúng trong lịch trình AI.")
 
         p_tab1, p_tab2 = st.tabs(["🔍 Tìm theo từ khoá (Text Search)", "📡 Tìm kiếm lân cận (Nearby Search)"])
 
         with p_tab1:
             q_col1, q_col2 = st.columns([3, 1])
             search_query = q_col1.text_input("Từ khoá tìm kiếm:", value="nhà hàng ngon Đà Nẵng")
-            max_p = q_col2.number_input("Số lượng kết quả tối đa:", 1, 10, 5)
+            max_p = q_col2.number_input("Số lượng kết quả:", 1, 10, 5)
 
-            if st.button("Tìm kiếm địa điểm"):
+            if st.button("Tìm kiếm địa điểm", key="btn_text_search"):
                 with st.spinner("Đang truy vấn Places API..."):
                     try:
                         svc = st.session_state.places_service
                         results = svc.search_text(search_query, max_results=max_p)
                         if not results:
-                            st.info("Không tìm thấy địa điểm nào phù hợp. Hãy thử từ khóa khác.")
+                            st.info("Không tìm thấy địa điểm. Thử từ khóa khác.")
                         else:
                             st.success(f"Tìm thấy {len(results)} địa điểm:")
-                            for r in results:
-                                with st.container():
-                                    st.markdown(f"#### {r['name']}")
-                                    st.write(f"**Địa chỉ**: {r.get('address')}")
-                                    st.write(f"**Đánh giá**: {r.get('rating')} ⭐ ({r.get('user_rating_count')} đánh giá)")
-                                    if r.get('google_maps_uri'):
-                                        st.markdown(f"[Xem bản đồ Google Maps]({r['google_maps_uri']})")
-                                    st.divider()
+                            _render_search_results_with_pin(results, "text")
                     except PlacesAPIError as e:
                         st.error(f"Lỗi Places API: {e.message}")
 
         with p_tab2:
             st.markdown("#### Tự động điền toạ độ theo thành phố:")
-            preset_city = st.selectbox(
-                "Chọn nhanh thành phố:",
-                list(DESTINATIONS_CATALOG.keys()),
-                index=0
-            )
+            preset_city = st.selectbox("Chọn nhanh thành phố:", list(DESTINATIONS_CATALOG.keys()), index=0)
             city_meta = DESTINATIONS_CATALOG[preset_city]
 
             c1, c2, c3 = st.columns(3)
@@ -407,7 +546,7 @@ def main():
             lng = c2.number_input("Kinh độ (Longitude):", value=float(city_meta["longitude"]), format="%.4f")
             radius = c3.number_input("Bán kính tìm kiếm (mét):", value=3000, step=500)
 
-            if st.button("Tìm kiếm địa điểm xung quanh"):
+            if st.button("Tìm kiếm địa điểm xung quanh", key="btn_nearby_search"):
                 with st.spinner("Đang quét địa điểm trong bán kính..."):
                     try:
                         svc = st.session_state.places_service
@@ -416,8 +555,7 @@ def main():
                             st.info("Không tìm thấy địa điểm nào trong bán kính này.")
                         else:
                             st.success(f"Tìm thấy {len(results)} địa điểm lân cận:")
-                            for r in results:
-                                st.write(f"**{r['name']}** — {r.get('address', 'N/A')}")
+                            _render_search_results_with_pin(results, "nearby")
                     except PlacesAPIError as e:
                         st.error(f"Lỗi Places API: {e.message}")
 
@@ -426,7 +564,7 @@ def main():
     # ─────────────────────────────────────────────────────────────
     with tab_fund:
         st.markdown("### 💳 Quản lý Quỹ Nhóm Tạm Thời (Temporary Trip Fund)")
-        st.caption("Theo dõi mục tiêu quỹ, phần đóng góp của từng thành viên và tự động xác nhận chuyến đi khi gom đủ tiền.")
+        st.caption("Theo dõi mục tiêu quỹ, phần đóng góp của từng thành viên và xác nhận chuyến đi.")
 
         trip_id = st.session_state.get("active_trip_id") or "trip-default"
         fund = fund_manager.get_fund(trip_id)
@@ -434,23 +572,20 @@ def main():
             fund = fund_manager.create_fund(
                 trip_id=trip_id,
                 target_amount=6_600_000,
-                member_names=["Thành viên 1", "Thành viên 2", "Thành viên 3", "Thành viên 4"]
+                member_names=["Thành viên 1", "Thành viên 2", "Thành viên 3", "Thành viên 4"],
             )
             st.session_state.fund = fund
             st.session_state.active_trip_id = trip_id
 
-        # Status Banner
         fcol1, fcol2, fcol3 = st.columns(3)
         fcol1.metric("Mục tiêu quỹ", f"{int(fund['target_amount']):,} VND")
         fcol2.metric("Đã đóng góp", f"{int(fund['total_contributed']):,} VND")
         fcol3.metric("Trạng thái quỹ", fund["status"])
 
-        # Progress bar
         progress = min(1.0, fund["total_contributed"] / fund["target_amount"]) if fund["target_amount"] > 0 else 0.0
         st.progress(progress)
         st.write(f"**Tiến độ thu quỹ: {round(progress * 100, 1)}%**")
 
-        # Fully Funded Notification & Confirmation Trigger
         if fund["status"] in (STATUS_FULLY_FUNDED, STATUS_CONFIRMED):
             st.success("🎉 Quỹ đã được gom đủ 100% mục tiêu!")
             if fund["status"] == STATUS_FULLY_FUNDED:
@@ -467,11 +602,13 @@ def main():
                 "Thành viên": m["name"],
                 "Hạn mức cần đóng (VND)": f"{int(m['target']):,} VND",
                 "Đã đóng (VND)": f"{int(m['paid']):,} VND",
-                "Trạng thái": "✅ Đã đóng đủ" if m["status"] == "paid" else ("🟡 Đóng một phần" if m["status"] == "partial" else "⏳ Chưa đóng")
+                "Trạng thái": (
+                    "✅ Đã đóng đủ" if m["status"] == "paid"
+                    else ("🟡 Đóng một phần" if m["status"] == "partial" else "⏳ Chưa đóng")
+                ),
             })
         st.table(pd.DataFrame(member_rows))
 
-        # Contribution Form
         if fund["status"] != STATUS_CONFIRMED:
             st.markdown("#### Ghi nhận đóng góp:")
             cf1, cf2, cf3 = st.columns([2, 2, 1])
@@ -486,6 +623,93 @@ def main():
                     st.rerun()
                 except Exception as e:
                     st.error(f"Lỗi ghi nhận đóng góp: {e}")
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# UI Helpers
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _render_structured_itinerary(items: list) -> None:
+    """Render ItineraryItem list with type-specific badges and colours."""
+    current_day = 0
+
+    for item in items:
+        if item.day != current_day:
+            current_day = item.day
+            st.markdown(f"#### 📅 Ngày {item.day} — {item.destination_name}")
+
+        if item.item_type == ItemType.TRANSIT:
+            ti = item.transit_info or {}
+            dist = ti.get("distance_km")
+            mins = ti.get("travel_time_min")
+            detail = ""
+            if dist or mins:
+                d_str = f"{dist} km" if dist else ""
+                m_str = f"{mins} phút" if mins else ""
+                detail = f" ({d_str}{' · ' if d_str and m_str else ''}{m_str})"
+            st.markdown(
+                f'<span class="badge-transit">TRANSIT</span> '
+                f'**{item.time_slot}** — {item.title}{detail}',
+                unsafe_allow_html=True,
+            )
+            if item.description:
+                st.caption(item.description)
+
+        elif item.item_type == ItemType.ACTIVITY:
+            st.markdown(f"🌅 **{item.time_slot}** — {item.title}")
+            if item.description:
+                st.caption(item.description)
+
+        else:  # PLACE
+            if item.status == PlaceStatus.UNVERIFIED:
+                badge = '<span class="badge-unverified">⚠️ Bạn đề xuất</span>'
+            else:
+                badge = '<span class="badge-verified">✅ Đã xác thực</span>'
+
+            st.markdown(
+                f'{badge} **{item.time_slot}** — **{item.title}**',
+                unsafe_allow_html=True,
+            )
+            if item.description:
+                st.caption(item.description)
+
+        st.divider() if item.item_type == ItemType.TRANSIT else None
+
+
+def _render_search_results_with_pin(results: list, key_prefix: str) -> None:
+    """Display search results with a 📌 Pin button beside each."""
+    for idx, r in enumerate(results):
+        with st.container():
+            rc1, rc2 = st.columns([5, 1])
+            with rc1:
+                st.markdown(f"#### {r['name']}")
+                st.write(f"**Địa chỉ**: {r.get('address', 'N/A')}")
+                st.write(f"**Đánh giá**: {r.get('rating', 'N/A')} ⭐ ({r.get('user_rating_count', 0)} đánh giá)")
+                if r.get("google_maps_uri"):
+                    st.markdown(f"[Xem trên Google Maps]({r['google_maps_uri']})")
+            with rc2:
+                pin_key = f"pin_{key_prefix}_{idx}_{r.get('id', idx)}"
+                already_pinned = any(
+                    p.name == r["name"] for p in st.session_state.pinned_places
+                )
+                if already_pinned:
+                    st.markdown("📌 *Đã ghim*")
+                elif st.button("📌 Ghim", key=pin_key):
+                    np = NormalizedPlace(
+                        id=r.get("id", f"pinned_{idx}"),
+                        name=r["name"],
+                        category=r.get("category", "attraction"),
+                        address=r.get("address", ""),
+                        latitude=r.get("latitude") or 0.0,
+                        longitude=r.get("longitude") or 0.0,
+                        rating=r.get("rating") or 0.0,
+                        user_rating_count=r.get("user_rating_count", 0),
+                        google_maps_uri=r.get("google_maps_uri"),
+                        source="pinned",
+                    )
+                    st.session_state.pinned_places.append(np)
+                    st.rerun()
+            st.divider()
 
 
 if __name__ == "__main__":
